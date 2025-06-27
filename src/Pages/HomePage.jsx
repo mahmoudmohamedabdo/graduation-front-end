@@ -24,7 +24,7 @@ export default function HomePage() {
                                 Join thousands of developers who've landed their dream jobs. Practice with real interview questions,
                                 get hired by top companies, and advance your career with our comprehensive platform.
                             </p>
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded inline-flex items-center gap-2">
+                            <button className="bg-blue-600  hover:bg-blue-700 text-white font-medium py-2 px-4 rounded inline-flex items-center gap-2">
                                 Let's Practice
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
