@@ -1,0 +1,99 @@
+import {
+  FaCcVisa,
+  FaCcPaypal,
+  FaCcMastercard,
+  FaCcAmex,
+  FaFacebookF,
+  FaInstagram,
+  FaYoutube,
+  FaXTwitter,
+} from "react-icons/fa6";
+import { Mail, Phone, MapPin } from "lucide-react";
+
+export default function Footer() {
+  return (
+    <footer className="bg-[#1F2A37] text-white px-8 py-12">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+        {/* Section 1 - Description & Payment */}
+        <div>
+          <h2 className="text-2xl font-bold mb-4">TechTrack</h2>
+          <p className="text-base leading-relaxed mb-6">
+            Empowering the next generation of tech professionals through
+            comprehensive training and direct connections with top companies.
+          </p>
+          <div>
+            <p className="font-semibold text-base mb-2">Payment:</p>
+            <div className="flex space-x-4 text-3xl">
+              <FaCcVisa className="text-blue-400" />
+              <FaCcPaypal className="text-blue-500" />
+              <FaCcAmex className="text-yellow-400" />
+              <FaCcMastercard className="text-red-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2 - Learning */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Learning</h3>
+          <ul className="space-y-2 text-base">
+            <li>All Tracks</li>
+            <li>Frontend Development</li>
+            <li>Backend Development</li>
+            <li>UI/UX Design</li>
+            <li>DevOps & Cloud</li>
+            <li>Mobile Development</li>
+            <li>Data Science</li>
+          </ul>
+        </div>
+
+        {/* Section 3 - Company */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Company</h3>
+          <ul className="space-y-2 text-base">
+            <li>About Us</li>
+            <li>Our Mission</li>
+            <li>Careers</li>
+            <li>Partner Companies</li>
+            <li>Success Stories</li>
+            <li>Press</li>
+            <li>Blog</li>
+          </ul>
+        </div>
+
+        {/* Section 4 - Support */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Support</h3>
+          <ul className="space-y-2 text-base mb-6">
+            <li>Help Center</li>
+            <li>FAQ</li>
+            <li>Contact Support</li>
+            <li>Community</li>
+            <li>Student Resources</li>
+          </ul>
+          <div className="space-y-3 text-base">
+            <p className="flex items-center gap-2">
+              <Mail className="w-5 h-5" /> support@techtrack.com
+            </p>
+            <p className="flex items-center gap-2">
+              <Phone className="w-5 h-5" /> 1-800-TECH-TRACK
+            </p>
+            <p className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" /> San Francisco, CA
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Bar */}
+      <div className="border-t border-white/20 pt-6 flex flex-col md:flex-row justify-between items-center text-sm">
+        <p>© 2025 TechPrep. All rights reserved.</p>
+        <div className="flex space-x-4 mt-4 md:mt-0 text-xl">
+          <a href="#"><FaFacebookF /></a>
+          <a href="#"><FaInstagram /></a>
+          <a href="#"><FaYoutube /></a>
+          <a href="#"><FaXTwitter /></a>
+        </div>
+      </div>
+    </footer>
+  );
+}

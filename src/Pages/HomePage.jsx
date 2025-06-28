@@ -1,4 +1,5 @@
 import React from 'react'
+import Footer from '../layouts/Footer';
 import Navbar from '../Components/Navbar'
 import img1 from '../assets/Images/img1.png'
 import img2 from '../assets/Images/img2.png'
@@ -61,6 +62,7 @@ export default function HomePage() {
                 </div>
 
             </main>
+            <Footer />
             {/*Slider*/}
         </div>
     )

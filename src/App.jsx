@@ -1,10 +1,10 @@
-import './App.css'
-import HomePage from './Pages/HomePage';
+import React from "react";
+import "./App.css";
+import LandingPage from "./Pages/landingpage/LandingPage";
 
 function App() {
-  return (
-   <HomePage/>
-  );
+  return <LandingPage />;
 }
 
-export default App
+export default App;
+
