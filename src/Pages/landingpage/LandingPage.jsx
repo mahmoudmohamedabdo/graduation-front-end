@@ -1,6 +1,10 @@
 import React from "react";
-import Header from "../../hooks/Header";
-import Footer from "../../hooks/Footer";
+import Header from "../../layouts/Header";
+import Footer from "../../layouts/Footer";
+import LearningTracks from "./Components/LearningTracks";
+import TrackSlider from "./Components/TrackSlider";
+import CallToAction from "./Components/CallToAction";
+
 
 import img1 from "../../assets/Images/img1.png";
 import img2 from "../../assets/Images/img2.png";
@@ -100,8 +104,12 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* Footer Section */}
-      <Footer />
+      
+      
+      <LearningTracks />
+      <TrackSlider /> 
+      <CallToAction />     
+      <Footer />      
     </div>
   );
 }

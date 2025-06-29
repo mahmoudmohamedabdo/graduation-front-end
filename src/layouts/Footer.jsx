@@ -1,20 +1,22 @@
-import {
-  FaCcVisa,
-  FaCcPaypal,
-  FaCcMastercard,
-  FaCcAmex,
-  FaFacebookF,
-  FaInstagram,
-  FaYoutube,
-  FaXTwitter,
-} from "react-icons/fa6";
+// Payment icons
+import visa from "../assets/payment/visa.png";
+import paypal from "../assets/payment/paypal.png";
+import amex from "../assets/payment/amex.png";
+import mastercard from "../assets/payment/mastercard.png";
+
+// Social icons
+import facebook from "../assets/social/facebook.png";
+import instagram from "../assets/social/instagram.png";
+import youtube from "../assets/social/youtube.png";
+import x from "../assets/social/x.png";
 import { Mail, Phone, MapPin } from "lucide-react";
+
 
 export default function Footer() {
   return (
     <footer className="bg-[#1F2A37] text-white px-8 py-12">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-        {/* Section 1 - Description & Payment */}
+        {/* Section 1 */}
         <div>
           <h2 className="text-2xl font-bold mb-4">TechTrack</h2>
           <p className="text-base leading-relaxed mb-6">
@@ -23,12 +25,13 @@ export default function Footer() {
           </p>
           <div>
             <p className="font-semibold text-base mb-2">Payment:</p>
-            <div className="flex space-x-4 text-3xl">
-              <FaCcVisa className="text-blue-400" />
-              <FaCcPaypal className="text-blue-500" />
-              <FaCcAmex className="text-yellow-400" />
-              <FaCcMastercard className="text-red-500" />
-            </div>
+            <div className="flex items-center space-x-4">
+              <img src={visa} alt="Visa" className="h-8" />
+              <img src={paypal} alt="PayPal" className="h-8" />
+              <img src={amex} alt="Amex" className="h-8" />
+              <img src={mastercard} alt="MasterCard" className="h-8" />
+          </div>
+
           </div>
         </div>
 
@@ -87,12 +90,13 @@ export default function Footer() {
       {/* Bottom Bar */}
       <div className="border-t border-white/20 pt-6 flex flex-col md:flex-row justify-between items-center text-sm">
         <p>© 2025 TechPrep. All rights reserved.</p>
-        <div className="flex space-x-4 mt-4 md:mt-0 text-xl">
-          <a href="#"><FaFacebookF /></a>
-          <a href="#"><FaInstagram /></a>
-          <a href="#"><FaYoutube /></a>
-          <a href="#"><FaXTwitter /></a>
+        <div className="flex space-x-4">
+          <img src={facebook} alt="Facebook" className="h-6" />
+          <img src={instagram} alt="Instagram" className="h-6" />
+          <img src={youtube} alt="YouTube" className="h-6" />
+          <img src={x} alt="X" className="h-6" />
         </div>
+
       </div>
     </footer>
   );
