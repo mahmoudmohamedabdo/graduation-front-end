@@ -5,7 +5,6 @@ import LearningTracks from "./Components/LearningTracks";
 import TrackSlider from "./Components/TrackSlider";
 import CallToAction from "./Components/CallToAction";
 
-
 import img1 from "../../assets/Images/img1.png";
 import img2 from "../../assets/Images/img2.png";
 import img3 from "../../assets/Images/img3.png";
@@ -17,8 +16,8 @@ export default function LandingPage() {
       <Header />
 
       {/* Hero Section */}
-      <main className="py-12 bg-gray-50 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="py-12 bg-white min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-5">
           <h3 className="text-xl font-semibold text-gray-800 mb-8">
             Welcome back, Rola Alaa
           </h3>
@@ -65,7 +64,7 @@ export default function LandingPage() {
                     backgroundColor: "#428EB7",
                     borderColor: "#F2F6FF",
                   }}
-                  className="m-3 border-5 rounded-tl-4xl transition duration-300 ease-in-out hover:-translate-y-2"
+                  className="m-3 border-5 rounded-tl-4xl transition duration-300 ease-in-out hover:-translate-y-2 hover:-translate-x-2"
                 >
                   <img src={img1} alt="" className="w-full h-auto" />
                 </div>
@@ -74,7 +73,7 @@ export default function LandingPage() {
                     backgroundColor: "#428EB7",
                     borderColor: "#F2F6FF",
                   }}
-                  className="m-3 border-5 rounded-tr-4xl transition duration-300 ease-in-out hover:-translate-y-2"
+                  className="m-3 border-5 rounded-tr-4xl transition duration-300 ease-in-out hover:-translate-y-2 hover:translate-x-2"
                 >
                   <img src={img2} alt="" />
                 </div>
@@ -85,7 +84,7 @@ export default function LandingPage() {
                     backgroundColor: "#428EB7",
                     borderColor: "#F2F6FF",
                   }}
-                  className="m-3 border-5 rounded-bl-4xl transition duration-300 ease-in-out hover:-translate-y-2"
+                  className="m-3 border-5 rounded-bl-4xl transition duration-300 ease-in-out hover:translate-y-2 hover:-translate-x-2"
                 >
                   <img src={img3} alt="" />
                 </div>
@@ -94,22 +93,24 @@ export default function LandingPage() {
                     backgroundColor: "#428EB7",
                     borderColor: "#F2F6FF",
                   }}
-                  className="m-3 border-5 rounded-br-4xl transition duration-300 ease-in-out hover:-translate-y-2"
+                  className="m-3 border-5 rounded-br-4xl transition duration-300 ease-in-out hover:translate-y-2 hover:translate-x-2"
                 >
                   <img src={img4} alt="" />
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Additional Sections */}
+          <div className="mt-16">
+            <LearningTracks />
+            <TrackSlider />
+            <CallToAction />
+          </div>
         </div>
       </main>
 
-      
-      
-      <LearningTracks />
-      <TrackSlider /> 
-      <CallToAction />     
-      <Footer />      
+      <Footer />
     </div>
   );
 }

@@ -1,18 +1,20 @@
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
+import leftArrow from "../../../assets/Images/leftArrow.png";
+import rightArrow from "../../../assets/Images/rightArrow.png";
 
 function TrackCard() {
   return (
     <div className="border border-gray-200 rounded-xl shadow-sm w-[220px] p-4 text-left relative bg-white">
-      {/* Top Blue Border */}
       <div className="absolute top-0 left-0 w-full h-1 bg-blue-600 rounded-t-xl"></div>
-
-      {/* Content */}
       <h3 className="text-base font-semibold mb-2">UI/UX Design</h3>
       <p className="text-sm text-gray-700 mb-4 leading-snug">
         Showcase your design skills through interface challenges, usability tests,
         and design system questions.
       </p>
-      <a href="#" className="text-blue-600 font-semibold text-sm inline-flex items-center gap-1">
+      <a
+        href="#"
+        className="text-blue-600 font-semibold text-sm inline-flex items-center gap-1"
+      >
         Explore UI/UX Track <span>→</span>
       </a>
     </div>
@@ -20,17 +22,55 @@ function TrackCard() {
 }
 
 export default function TrackCarousel() {
+  const scrollRef = useRef(null);
+  const [isAtStart, setIsAtStart] = useState(true);
+  const [isAtEnd, setIsAtEnd] = useState(false);
+
+  const handleScroll = (direction) => {
+    const container = scrollRef.current;
+    const scrollAmount = container.offsetWidth;
+    container.scrollBy({
+      left: direction === "right" ? scrollAmount : -scrollAmount,
+      behavior: "smooth",
+    });
+  };
+
+  const checkScrollPosition = () => {
+    const container = scrollRef.current;
+    if (!container) return;
+    setIsAtStart(container.scrollLeft <= 0);
+    setIsAtEnd(
+      container.scrollLeft + container.offsetWidth >= container.scrollWidth - 10
+    );
+  };
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", checkScrollPosition);
+    checkScrollPosition();
+    return () => container.removeEventListener("scroll", checkScrollPosition);
+  }, []);
+
   return (
-    <section className="bg-white py-12 px-4 text-center">
+    <section className="bg-white py-12 px-4 text-center max-w-7xl mx-auto">
       {/* Title and arrows */}
       <div className="relative mb-2 flex justify-center items-center">
         <h2 className="text-2xl md:text-3xl font-bold">Choose Your Track</h2>
         <div className="absolute right-0 flex gap-2">
-          <button className="w-9 h-9 rounded-full border text-blue-600 border-blue-600 hover:bg-blue-50">
-            ←
+          <button
+            onClick={() => handleScroll("left")}
+            disabled={isAtStart}
+            className={`${isAtStart ? "opacity-30 cursor-not-allowed" : ""}`}
+          >
+            <img src={rightArrow} alt="Left" />
           </button>
-          <button className="w-9 h-9 rounded-full border text-white bg-blue-600 hover:bg-blue-700">
-            →
+          <button
+            onClick={() => handleScroll("right")}
+            disabled={isAtEnd}
+            className={`${isAtEnd ? "opacity-30 cursor-not-allowed" : ""}`}
+          >
+            <img src={leftArrow} alt="Right" />
           </button>
         </div>
       </div>
@@ -39,12 +79,18 @@ export default function TrackCarousel() {
         Specialized learning paths tailored to your career goals
       </p>
 
-      {/* Cards */}
-      <div className="flex justify-center gap-6 flex-wrap">
-        <TrackCard />
-        <TrackCard />
-        <TrackCard />
-        <TrackCard />
+      {/* Scrollable Track Cards */}
+      <div
+        ref={scrollRef}
+        className="flex gap-6 overflow-x-auto scroll-smooth no-scrollbar pb-2"
+      >
+        {Array(6)
+          .fill()
+          .map((_, index) => (
+            <div key={index} className="flex-shrink-0">
+              <TrackCard />
+            </div>
+          ))}
       </div>
     </section>
   );
