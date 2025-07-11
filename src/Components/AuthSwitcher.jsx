@@ -61,6 +61,7 @@ const AuthSwitcher = ({ onClose }) => {
       if (response.ok) {
 
        console.log("Login successful:", result);
+       localStorage.setItem("userId", result.data.id);
         // Store token if rememberMe is checked
         if (rememberMe) {
           localStorage.setItem("authToken", result.data.token);
@@ -146,6 +147,7 @@ const AuthSwitcher = ({ onClose }) => {
       }
 
       if (response.ok) {
+        
         console.log("Registration successful:", result);
         // Store token if returned
         if (result.data?.token && result.data?.email) {
@@ -159,8 +161,7 @@ const AuthSwitcher = ({ onClose }) => {
         }
         alert("Account created successfully!");
         setIsLogin(true);
-        navigate('/home')
-        onClose();
+       
       } else {
 
 
@@ -472,6 +473,7 @@ const AuthSwitcher = ({ onClose }) => {
                       <button
                         type="submit"
                         className="w-full bg-[#2563EB] text-white py-3 rounded-md hover:bg-[#2546EB] transition font-semibold"
+                        
                       >
                         Create an account
                       </button>
