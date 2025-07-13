@@ -1,23 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import user from '../assets/Images/user.png';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
   const [username, setUsername] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileRef = useRef(null);
+  const navigate = useNavigate();
 
   const getLinkClass = (isActive) =>
     isActive
-      ? "block bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition"
-      : "block text-gray-700 px-4 py-2 text-sm font-medium hover:text-blue-600 transition";
+      ? "block w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+      : "block w-full text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition";
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername);
-    } else {
-      setUsername('Guest'); 
-    }
+    setUsername(storedUsername || 'Guest');
+
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   return (
@@ -34,18 +41,37 @@ export default function Navbar() {
             <NavLink to="/home" className={({ isActive }) => getLinkClass(isActive)}>Home</NavLink>
             <NavLink to="/level" className={({ isActive }) => getLinkClass(isActive)}>Prepare</NavLink>
             <NavLink to="/jops" className={({ isActive }) => getLinkClass(isActive)}>Jobs</NavLink>
-            <NavLink to="/track" className={({ isActive }) => getLinkClass(isActive)}>My Learning</NavLink>
           </div>
 
-          {/* User Profile */}
-          <div className="hidden md:flex items-center space-x-3">
+          {/* Profile Desktop */}
+          <div className="hidden md:flex items-center space-x-3 relative" ref={profileRef}>
             <span className="text-gray-700 font-medium text-sm">{username}</span>
-            <div className="w-8 h-8 rounded-full overflow-hidden">
+            <button
+              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              className="w-8 h-8 rounded-full overflow-hidden focus:outline-none"
+            >
               <img src={user} alt="user" className="w-full h-full object-cover" />
-            </div>
+            </button>
+
+            {profileMenuOpen && (
+              <div className="absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg z-50 p-2 space-y-1">
+                <NavLink to="/profile" className={getLinkClass(false)}>Profile</NavLink>
+                <NavLink to="/myLearning" className={getLinkClass(false)}>My Learning</NavLink>
+                <NavLink to="/help" className={getLinkClass(false)}>Help & Support</NavLink>
+                <button
+                  onClick={() => {
+                    localStorage.clear();
+                    navigate('/landingpage');
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-red-600 font-semibold hover:bg-gray-100 rounded-lg"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -58,20 +84,40 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile Menu Content */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-2 border-t border-gray-200 pt-4 space-y-1">
-            <div className="flex items-center space-x-3 px-4 pb-2">
+          <div className="md:hidden mt-2 border-t border-gray-200 pt-4 px-4 space-y-2 bg-white rounded-lg shadow-md pb-4">
+            <div className="flex items-center space-x-3">
               <div className="w-8 h-8 rounded-full overflow-hidden">
                 <img src={user} alt="user" className="w-full h-full object-cover" />
               </div>
               <span className="text-gray-700 font-medium text-sm">{username}</span>
             </div>
 
-            <NavLink to="/home" className={({ isActive }) => getLinkClass(isActive)}>Home</NavLink>
-            <NavLink to="/level" className={({ isActive }) => getLinkClass(isActive)}>Prepare</NavLink>
-            <NavLink to="/jops" className={({ isActive }) => getLinkClass(isActive)}>Jobs</NavLink>
-            <NavLink to="/track" className={({ isActive }) => getLinkClass(isActive)}>My Learning</NavLink>
+            {/* Navigation Links */}
+            <div className=" pt-2">
+              <NavLink to="/home" className={({ isActive }) => getLinkClass(isActive)}>Home</NavLink>
+              <NavLink to="/level" className={({ isActive }) => getLinkClass(isActive)}>Prepare</NavLink>
+              <NavLink to="/jops" className={({ isActive }) => getLinkClass(isActive)}>Jobs</NavLink>
+            </div>
+
+            {/* Divider */}
+            <hr className="border-t border-gray-200 my-2" />
+
+            {/* Profile Links */}
+            <div className="space-y-1">
+              <NavLink to="/profile" className={getLinkClass(false)}>Profile</NavLink>
+              <NavLink to="/help" className={getLinkClass(false)}>Help & Support</NavLink>
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  navigate('/login');
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-red-600 font-semibold hover:bg-gray-100 rounded-lg"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         )}
       </div>
