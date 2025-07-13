@@ -9,6 +9,7 @@ import { FaSearch } from 'react-icons/fa';
 
 export default function Track() {
   const [tracks, setTracks] = useState([]);
+  const [allTracks, setAllTracks] = useState([]); // Store all tracks for client-side filtering
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,11 +25,13 @@ export default function Track() {
         const response = await axios.get(`/api/Tracks/by-category/${trackId}`);
         const trackData = Array.isArray(response.data.data) ? response.data.data : [];
         setTracks(trackData);
+        setAllTracks(trackData); // Store for client-side filtering
         setSearchMessage(trackData.length === 0 ? `No tracks found for category ${trackId}.` : '');
         console.log('Initial tracks response:', response.data);
       } catch (error) {
         console.error('Error fetching track data:', error);
         setTracks([]);
+        setAllTracks([]);
         setSearchMessage('Error fetching tracks. Please try again.');
       } finally {
         setIsLoading(false);
@@ -51,11 +54,13 @@ export default function Track() {
         const response = await axios.get(`/api/Tracks/by-category/${trackId}`);
         const trackData = Array.isArray(response.data.data) ? response.data.data : [];
         setTracks(trackData);
+        setAllTracks(trackData);
         setSearchMessage(trackData.length === 0 ? `No tracks found for category ${trackId}.` : '');
         console.log('Reloaded tracks:', response.data);
       } catch (error) {
         console.error('Error reloading track data:', error);
         setTracks([]);
+        setAllTracks([]);
         setSearchMessage('Error reloading tracks. Please try again.');
       } finally {
         setIsLoading(false);
@@ -64,8 +69,8 @@ export default function Track() {
     }
 
     try {
-      // Use query parameters as per API documentation
-      const searchUrl = `http://fit4job.runasp.net/api/TrackCategories/search?Name=${encodeURIComponent(searchQuery)}&CategoryId=${categoryId}&IsActive=${premiumFilter}`;
+      // Try alternative search endpoint
+      const searchUrl = `http://fit4job.runasp.net/api/Tracks/search?Name=${encodeURIComponent(searchQuery)}&CategoryId=${categoryId}&IsActive=${premiumFilter}`;
       console.log('Search URL:', searchUrl);
       const response = await axios.get(searchUrl);
       const searchResults = Array.isArray(response.data.data) ? response.data.data : [];
@@ -78,8 +83,23 @@ export default function Track() {
       console.log('Search response:', response.data);
     } catch (error) {
       console.error('Error searching tracks:', error);
-      setTracks([]);
-      setSearchMessage('Error searching tracks. Please try again.');
+      if (error.response?.status === 404) {
+        // Fallback to client-side filtering
+        const filteredTracks = allTracks.filter((track) =>
+          track.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          (premiumFilter ? track.isPremium : true)
+        );
+        setTracks(filteredTracks);
+        setSearchMessage(
+          filteredTracks.length === 0
+            ? `No results found for "${searchQuery}" in category ${categoryId}.`
+            : 'Using client-side filtering due to search endpoint failure.'
+        );
+        console.log('Client-side filtered tracks:', filteredTracks);
+      } else {
+        setTracks([]);
+        setSearchMessage('Error searching tracks. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -96,23 +116,8 @@ export default function Track() {
   const handleReset = () => {
     setSearchQuery('');
     setSearchMessage('');
-    setIsLoading(true);
-    const fetchTrackData = async () => {
-      try {
-        const response = await axios.get(`/api/Tracks/by-category/${trackId}`);
-        const trackData = Array.isArray(response.data.data) ? response.data.data : [];
-        setTracks(trackData);
-        setSearchMessage(trackData.length === 0 ? `No tracks found for category ${trackId}.` : '');
-        console.log('Reset tracks:', response.data);
-      } catch (error) {
-        console.error('Error resetting track data:', error);
-        setTracks([]);
-        setSearchMessage('Error resetting tracks. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchTrackData();
+    setTracks(allTracks); // Restore all tracks
+    setSearchMessage(allTracks.length === 0 ? `No tracks found for category ${trackId}.` : '');
   };
 
   return (
@@ -159,17 +164,7 @@ export default function Track() {
                 </div>
                 {/* Filter Controls */}
                 <div className="flex gap-4">
-                  <div>
-                    <label className="mr-2">Category ID:</label>
-                    <input
-                      type="text"
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="px-2 py-1 border rounded-lg"
-                      placeholder="e.g., 1"
-                      disabled={isLoading}
-                    />
-                  </div>
+               
                   <div>
                     <label className="mr-2">Premium Filter:</label>
                     <select
