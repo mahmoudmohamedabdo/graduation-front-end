@@ -1,21 +1,27 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Navbar from '../../layouts/Navbar';
-import CourseCard from './Components/CourseCard'
+import CourseCard from './Components/CourseCard';
 import NewJops from './Components/NewJobs';
 import Footer from '../../layouts/Footer';
-import img1 from "../../assets/Images/img1.png";
-import img2 from "../../assets/Images/img2.png";
-import img3 from "../../assets/Images/img3.png";
-import img4 from "../../assets/Images/img4.png";
+import img1 from '../../assets/Images/img1.png';
+import img2 from '../../assets/Images/img2.png';
+import img3 from '../../assets/Images/img3.png';
+import img4 from '../../assets/Images/img4.png';
 import rightArrow from '../../assets/Images/rightArrow.png';
 import leftArrow from '../../assets/Images/leftArrow.png';
-import blackArrow from '../../assets/Images/blackArrow.png'
-
+import blackArrow from '../../assets/Images/blackArrow.png';
+import axios from 'axios';
+import { FaSearch } from 'react-icons/fa';
 
 export default function HomePage() {
   const scrollRef = useRef(null);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMessage, setSearchMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [queryParam, setQueryParam] = useState('query');
 
   const handleScroll = (direction) => {
     const container = scrollRef.current;
@@ -39,11 +45,104 @@ export default function HomePage() {
     return () => container.removeEventListener('scroll', checkScrollPosition);
   }, []);
 
+  // Fetch all courses
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setIsLoading(true);
+      try {
+        const response = await axios.get('/api/TrackCategories/');
+        const courseData = Array.isArray(response.data.data) ? response.data.data : [];
+        setCourses(courseData);
+        setSearchMessage(courseData.length === 0 ? 'No courses found.' : '');
+        console.log('Courses response:', response.data);
+      } catch (err) {
+        console.error('Error fetching courses:', err);
+        setCourses([]);
+        setSearchMessage('Error fetching courses. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  // Handle search functionality
+  const handleSearch = async () => {
+    setSearchMessage('');
+    setIsLoading(true);
+    if (!searchQuery.trim()) {
+      // Reload all courses if query is empty
+      try {
+        const response = await axios.get('/api/TrackCategories/');
+        const courseData = Array.isArray(response.data.data) ? response.data.data : [];
+        setCourses(courseData);
+        setSearchMessage(courseData.length === 0 ? 'No courses found.' : '');
+        console.log('Reloaded courses:', response.data);
+      } catch (error) {
+        console.error('Error reloading courses:', error);
+        setCourses([]);
+        setSearchMessage('Error reloading courses. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    try {
+      const searchUrl = `http://fit4job.runasp.net/api/TrackCategories/search/1/true?${queryParam}=${encodeURIComponent(searchQuery)}`;
+      console.log('Search URL:', searchUrl);
+      const response = await axios.get(searchUrl);
+      const searchResults = Array.isArray(response.data.data) ? response.data.data : [];
+      setCourses(searchResults);
+      setSearchMessage(
+        searchResults.length === 0
+          ? `No courses found for "${searchQuery}".`
+          : ''
+      );
+      console.log('Search response:', response.data);
+    } catch (error) {
+      console.error('Error searching courses:', error);
+      setCourses([]);
+      setSearchMessage('Error searching courses. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Trigger search on Enter key press
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  // Reset search
+  const handleReset = () => {
+    setSearchQuery('');
+    setSearchMessage('');
+    setIsLoading(true);
+    const fetchCourses = async () => {
+      try {
+        const response = await axios.get('/api/TrackCategories/');
+        const courseData = Array.isArray(response.data.data) ? response.data.data : [];
+        setCourses(courseData);
+        setSearchMessage(courseData.length === 0 ? 'No courses found.' : '');
+        console.log('Reset courses:', response.data);
+      } catch (error) {
+        console.error('Error resetting courses:', error);
+        setCourses([]);
+        setSearchMessage('Error resetting courses. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCourses();
+  };
+
   return (
     <div>
       <Navbar />
-
-      {/* Hero Section */}
       <main className="py-12 bg-gray-50 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-5">
           <h3 className="text-xl font-semibold text-gray-800 mb-8">Welcome back, Rola Alaa</h3>
@@ -57,14 +156,37 @@ export default function HomePage() {
                 Join thousands of developers who've landed their dream jobs. Practice with real interview questions,
                 get hired by top companies, and advance your career with our comprehensive platform.
               </p>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded inline-flex items-center gap-2">
-                Let's Practice
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                  strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
-                </svg>
-              </button>
+              <div className="relative max-w-md mx-auto mt-6 flex items-center gap-2">
+                <div className="relative flex-grow">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Search courses..."
+                    className="w-full px-4 py-2 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E7CE8]"
+                    disabled={isLoading}
+                  />
+                  <FaSearch
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 cursor-pointer"
+                    onClick={handleSearch}
+                  />
+                </div>
+                {searchQuery && (
+                  <button
+                    onClick={handleReset}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    disabled={isLoading}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {/* Feedback Messages */}
+              {isLoading && <p className="text-blue-500 mt-2 text-center">Searching...</p>}
+              {searchMessage && !isLoading && (
+                <p className="text-red-500 mt-2 text-center">{searchMessage}</p>
+              )}
             </div>
 
             {/* Hero Images */}
@@ -113,36 +235,39 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Course Cards*/}
+          {/* Course Cards */}
           <div ref={scrollRef} className="flex gap-6 overflow-x-auto scroll-smooth no-scrollbar pb-2">
-            {Array(6).fill().map((_, index) => (
-              <div key={index} className="flex-shrink-0">
-                <CourseCard />
-              </div>
-            ))}
+            {isLoading ? (
+              <p className="text-center text-gray-500">Loading courses...</p>
+            ) : courses.length > 0 ? (
+              courses.map((course) => (
+                <div key={course.id}>
+                  <CourseCard course={course} />
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-gray-500">No courses available.</p>
+            )}
           </div>
-         
-         {/* Jop Cards Header */}
+
+          {/* Job Cards Header */}
           <div className="flex justify-between items-center mt-16 mb-4 px-2 sm:px-0">
-            <h3 className="text-2xl font-semibold">New Jops</h3>
+            <h3 className="text-2xl font-semibold">New Jobs</h3>
             <div className="icons flex items-center gap-2 cursor-pointer text-blue-600 font-semibold">
               View All
               <img src={blackArrow} alt="" className="w-5 h-5" />
             </div>
           </div>
 
-          {/* Jop Cards */}
-          <div className="flex  gap-4 sm:gap-6 pb-2 justify-center lg:justify-start">
+          {/* Job Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-2 text-center items-center">
             {Array(4).fill().map((_, index) => (
-              <div key={index} className="flex-shrink-0 w-72 sm:w-72">
-                <NewJops />
-              </div>
+              <NewJops key={index} />
             ))}
           </div>
-
         </div>
       </main>
-      <Footer/>
+      <Footer />
     </div>
   );
 }

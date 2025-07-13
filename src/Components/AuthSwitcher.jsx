@@ -62,6 +62,7 @@ const AuthSwitcher = ({ onClose }) => {
 
        console.log("Login successful:", result);
        localStorage.setItem("userId", result.data.id);
+       console.log("Logged User",result.data.id)
         // Store token if rememberMe is checked
         if (rememberMe) {
           localStorage.setItem("authToken", result.data.token);

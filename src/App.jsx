@@ -29,7 +29,7 @@ function App() {
         <Route path="/home" element={<HomePage/>}/>
         <Route path="/level" element={<Level/>}/>
         <Route path="/exam" element={<ExamPage/>}/>
-        <Route path="/track" element={<Track/>}/>
+        <Route path="/track/:id" element={<Track/>}/>
         <Route path="/jops" element={<Jops/>}/>
         <Route path="/jopDetails" element={<JopDetails/>}/>
         <Route path="/jopTask" element={<JopTask/>}/>
