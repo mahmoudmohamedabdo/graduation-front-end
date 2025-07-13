@@ -13,7 +13,6 @@ export default function Track() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [categoryId, setCategoryId] = useState('1');
   const [premiumFilter, setPremiumFilter] = useState(true);
   const { id: trackId } = useParams();
 
@@ -40,66 +39,48 @@ export default function Track() {
 
     if (trackId) {
       fetchTrackData();
-      setCategoryId(trackId); // Sync categoryId with trackId
     }
   }, [trackId]);
 
-  // Handle search functionality
+  // Handle search functionality (client-side filtering)
   const handleSearch = async () => {
     setSearchMessage('');
     setIsLoading(true);
     if (!searchQuery.trim()) {
-      // Reload all tracks if query is empty
-      try {
-        const response = await axios.get(`/api/Tracks/by-category/${trackId}`);
-        const trackData = Array.isArray(response.data.data) ? response.data.data : [];
-        setTracks(trackData);
-        setAllTracks(trackData);
-        setSearchMessage(trackData.length === 0 ? `No tracks found for category ${trackId}.` : '');
-        console.log('Reloaded tracks:', response.data);
-      } catch (error) {
-        console.error('Error reloading track data:', error);
-        setTracks([]);
-        setAllTracks([]);
-        setSearchMessage('Error reloading tracks. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+      // Restore all tracks if query is empty
+      setTracks(allTracks);
+      setSearchMessage(allTracks.length === 0 ? `No tracks found for category ${trackId}.` : '');
+      setIsLoading(false);
       return;
     }
 
     try {
-      // Try alternative search endpoint
-      const searchUrl = `http://fit4job.runasp.net/api/Tracks/search?Name=${encodeURIComponent(searchQuery)}&CategoryId=${categoryId}&IsActive=${premiumFilter}`;
+      // Attempt server-side search (update with correct endpoint once confirmed)
+      const searchUrl = `http://fit4job.runasp.net/api/Tracks/search?Name=${encodeURIComponent(searchQuery)}&CategoryId=${trackId}&IsActive=${premiumFilter}`;
       console.log('Search URL:', searchUrl);
       const response = await axios.get(searchUrl);
       const searchResults = Array.isArray(response.data.data) ? response.data.data : [];
       setTracks(searchResults);
       setSearchMessage(
         searchResults.length === 0
-          ? `No results found for "${searchQuery}" in category ${categoryId}.`
+          ? `No results found for "${searchQuery}" in category ${trackId}.`
           : ''
       );
       console.log('Search response:', response.data);
     } catch (error) {
       console.error('Error searching tracks:', error);
-      if (error.response?.status === 404) {
-        // Fallback to client-side filtering
-        const filteredTracks = allTracks.filter((track) =>
-          track.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          (premiumFilter ? track.isPremium : true)
-        );
-        setTracks(filteredTracks);
-        setSearchMessage(
-          filteredTracks.length === 0
-            ? `No results found for "${searchQuery}" in category ${categoryId}.`
-            : 'Using client-side filtering due to search endpoint failure.'
-        );
-        console.log('Client-side filtered tracks:', filteredTracks);
-      } else {
-        setTracks([]);
-        setSearchMessage('Error searching tracks. Please try again.');
-      }
+      // Fallback to client-side filtering
+      const filteredTracks = allTracks.filter((track) =>
+        track.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        (premiumFilter ? track.isPremium : true)
+      );
+      setTracks(filteredTracks);
+      setSearchMessage(
+        filteredTracks.length === 0
+          ? `No results found for "${searchQuery}" in category ${trackId}.`
+          : 'Using client-side filtering due to search endpoint failure.'
+      );
+      console.log('Client-side filtered tracks:', filteredTracks);
     } finally {
       setIsLoading(false);
     }
@@ -134,6 +115,13 @@ export default function Track() {
               <p className="text-gray-700 max-w-2xl">
                 Choose from our carefully curated technologies and start your learning journey with questions tailored to your skill level.
               </p>
+              {/* Display total number of levels */}
+              <p className="text-gray-600">
+                Available Levels: <span className="font-semibold">{tracks.length}</span> | Total Questions:{' '}
+                <span className="font-semibold">
+                  {tracks.reduce((sum, track) => sum + (track.trackQuestionsCount || 0), 0)}
+                </span>
+              </p>
               {/* Search Input and Filters */}
               <div className="space-y-4">
                 <div className="relative max-w-md flex items-center gap-2">
@@ -164,7 +152,6 @@ export default function Track() {
                 </div>
                 {/* Filter Controls */}
                 <div className="flex gap-4">
-               
                   <div>
                     <label className="mr-2">Premium Filter:</label>
                     <select
@@ -205,6 +192,8 @@ export default function Track() {
                   isPremium={track.isPremium}
                   price={track.isPremium ? track.price : null}
                   trackId={track.id}
+                  questionCount={track.trackQuestionsCount || 0} // Pass question count
+                  levelCount={1} // Each track is one level
                 />
               ))}
             </div>
