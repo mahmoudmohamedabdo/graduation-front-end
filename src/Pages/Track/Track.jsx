@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../../layouts/Navbar';
 import Footer from '../../layouts/Footer';
 import learn from '../../assets/Images/Learning.png';
@@ -9,10 +9,10 @@ import { FaSearch } from 'react-icons/fa';
 
 export default function Track() {
   const [tracks, setTracks] = useState([]);
-  const [allTracks, setAllTracks] = useState([]); // Store all tracks for client-side filtering
+  const [allTracks, setAllTracks] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [premiumFilter, setPremiumFilter] = useState(true);
   const { id: trackId } = useParams();
 
@@ -22,13 +22,45 @@ export default function Track() {
       setIsLoading(true);
       try {
         const response = await axios.get(`/api/Tracks/by-category/${trackId}`);
-        const trackData = Array.isArray(response.data.data) ? response.data.data : [];
-        setTracks(trackData);
-        setAllTracks(trackData); // Store for client-side filtering
-        setSearchMessage(trackData.length === 0 ? `No tracks found for category ${trackId}.` : '');
-        console.log('Initial tracks response:', response.data);
+        console.log('Raw API response:', JSON.stringify(response.data, null, 2));
+
+        // Normalize response.data.data to an array
+        const trackData = Array.isArray(response.data.data)
+          ? response.data.data
+          : response.data.data
+          ? [response.data.data]
+          : [];
+
+        const formattedTracks = trackData.map(track => {
+          // Calculate total question count from difficulty counters
+          const difficultyCount =
+            (track.trackDetails?.easyQuestionsCounter || 0) +
+            (track.trackDetails?.mediumQuestionsCounter || 0) +
+            (track.trackDetails?.hardQuestionsCounter || 0);
+          
+          // Fallback to trackQuestionsCount if difficultyCount is 0
+          const questionCount = difficultyCount > 0 ? difficultyCount : (track.trackQuestionsCount || 0);
+
+          const trackInfo = {
+            id: track.id || 0,
+            name: track.name || 'Unnamed Track',
+            description: track.description || 'No description available',
+            isPremium: track.isPremium || false,
+            price: track.isPremium ? track.price : null,
+            questionCount: questionCount,
+            levelCount: trackData.length || 1,
+          };
+          
+          console.log('Track mapping:', { input: track, output: trackInfo });
+          return trackInfo;
+        });
+
+        console.log('Formatted tracks:', JSON.stringify(formattedTracks, null, 2));
+        setTracks(formattedTracks);
+        setAllTracks(formattedTracks);
+        setSearchMessage(formattedTracks.length === 0 ? `No tracks found for category ${trackId}.` : '');
       } catch (error) {
-        console.error('Error fetching track data:', error);
+        console.error('Error fetching track data:', error.response?.data || error.message);
         setTracks([]);
         setAllTracks([]);
         setSearchMessage('Error fetching tracks. Please try again.');
@@ -47,7 +79,6 @@ export default function Track() {
     setSearchMessage('');
     setIsLoading(true);
     if (!searchQuery.trim()) {
-      // Restore all tracks if query is empty
       setTracks(allTracks);
       setSearchMessage(allTracks.length === 0 ? `No tracks found for category ${trackId}.` : '');
       setIsLoading(false);
@@ -55,21 +86,37 @@ export default function Track() {
     }
 
     try {
-      // Attempt server-side search (update with correct endpoint once confirmed)
       const searchUrl = `http://fit4job.runasp.net/api/Tracks/search?Name=${encodeURIComponent(searchQuery)}&CategoryId=${trackId}&IsActive=${premiumFilter}`;
       console.log('Search URL:', searchUrl);
       const response = await axios.get(searchUrl);
-      const searchResults = Array.isArray(response.data.data) ? response.data.data : [];
-      setTracks(searchResults);
+      console.log('Search response:', JSON.stringify(response.data, null, 2));
+      const searchResults = Array.isArray(response.data.data) ? response.data.data : response.data.data ? [response.data.data] : [];
+      const formattedResults = searchResults.map(track => {
+        // Calculate total question count from difficulty counters
+        
+        const questionCount = (track.trackQuestionsCount );
+
+        const trackInfo = {
+          id: track.id || 0,
+          name: track.name || 'Unnamed Track',
+          description: track.description || 'No description available',
+          isPremium: track.isPremium || false,
+          price: track.isPremium ? track.price : null,
+          questionCount: questionCount,
+          levelCount: searchResults.length || 1,
+        };
+        
+        console.log('Search track mapping:', { input: track, output: trackInfo });
+        return trackInfo;
+      });
+      setTracks(formattedResults);
       setSearchMessage(
-        searchResults.length === 0
+        formattedResults.length === 0
           ? `No results found for "${searchQuery}" in category ${trackId}.`
           : ''
       );
-      console.log('Search response:', response.data);
     } catch (error) {
-      console.error('Error searching tracks:', error);
-      // Fallback to client-side filtering
+      console.error('Error searching tracks:', error.response?.data || error.message);
       const filteredTracks = allTracks.filter((track) =>
         track.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
         (premiumFilter ? track.isPremium : true)
@@ -80,7 +127,7 @@ export default function Track() {
           ? `No results found for "${searchQuery}" in category ${trackId}.`
           : 'Using client-side filtering due to search endpoint failure.'
       );
-      console.log('Client-side filtered tracks:', filteredTracks);
+      console.log('Client-side filtered tracks:', JSON.stringify(filteredTracks, null, 2));
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +144,7 @@ export default function Track() {
   const handleReset = () => {
     setSearchQuery('');
     setSearchMessage('');
-    setTracks(allTracks); // Restore all tracks
+    setTracks(allTracks);
     setSearchMessage(allTracks.length === 0 ? `No tracks found for category ${trackId}.` : '');
   };
 
@@ -105,7 +152,6 @@ export default function Track() {
     <div>
       <Navbar />
       <main className="py-12 min-h-screen bg-gray-50">
-        {/* Hero Section */}
         <div className="bg-white my-5">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col lg:flex-row justify-between items-center gap-8">
             <div className="space-y-4">
@@ -115,14 +161,6 @@ export default function Track() {
               <p className="text-gray-700 max-w-2xl">
                 Choose from our carefully curated technologies and start your learning journey with questions tailored to your skill level.
               </p>
-              {/* Display total number of levels */}
-              <p className="text-gray-600">
-                Available Levels: <span className="font-semibold">{tracks.length}</span> | Total Questions:{' '}
-                <span className="font-semibold">
-                  {tracks.reduce((sum, track) => sum + (track.trackQuestionsCount || 0), 0)}
-                </span>
-              </p>
-              {/* Search Input and Filters */}
               <div className="space-y-4">
                 <div className="relative max-w-md flex items-center gap-2">
                   <div className="relative flex-grow">
@@ -150,7 +188,6 @@ export default function Track() {
                     </button>
                   )}
                 </div>
-                {/* Filter Controls */}
                 <div className="flex gap-4">
                   <div>
                     <label className="mr-2">Premium Filter:</label>
@@ -166,7 +203,6 @@ export default function Track() {
                   </div>
                 </div>
               </div>
-              {/* Feedback Messages */}
               {isLoading && <p className="text-blue-500 mt-2">Searching...</p>}
               {searchMessage && !isLoading && (
                 <p className="text-red-500 mt-2">{searchMessage}</p>
@@ -178,7 +214,6 @@ export default function Track() {
           </div>
         </div>
 
-        {/* Cards Section */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
           {isLoading ? (
             <p className="text-center text-gray-500">Loading tracks...</p>
@@ -192,8 +227,7 @@ export default function Track() {
                   isPremium={track.isPremium}
                   price={track.isPremium ? track.price : null}
                   trackId={track.id}
-                  questionCount={track.trackQuestionsCount || 0} // Pass question count
-                  levelCount={1} // Each track is one level
+                  levelCount={track.levelCount}
                 />
               ))}
             </div>

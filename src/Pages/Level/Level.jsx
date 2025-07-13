@@ -30,10 +30,7 @@ export default function Level({ isOpen, onClose, trackId }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Log props for debugging
   console.log('Level component props:', { isOpen, trackId, userId });
-
-  // Fetch track data (for active session check)
   useEffect(() => {
     const fetchTrackData = async () => {
       if (!isOpen || !trackId) {
@@ -101,7 +98,7 @@ export default function Level({ isOpen, onClose, trackId }) {
             ].filter(qt => qt.count >= 0),
             duration: level.duration || '10 min',
             questionCount: level.trackQuestionsCount || 0,
-            id: level.id, // Include id for openExamPage
+            id: level.id,
           }));
           setLevels(formattedLevels);
           if (formattedLevels.length === 0) {
@@ -179,7 +176,7 @@ export default function Level({ isOpen, onClose, trackId }) {
     <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col z-50 relative" onClick={(e) => e.stopPropagation()}>
       <div className="bg-gradient-to-r from-[#EEF2FF] to-[#EFF6FF] px-6 py-4 flex items-center justify-between rounded-t-2xl p-3">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold">Select Skill Level</h2>
+          <h2 className="text-xl md:text-2xl font-bold">Select Course</h2>
           <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
             <img src={arrow} alt="arrow" className="w-4 h-4" />
             <span>React</span> {/* Replace with dynamic category name if available */}
@@ -191,7 +188,7 @@ export default function Level({ isOpen, onClose, trackId }) {
       </div>
       <div className="px-6 py-4 space-y-6 overflow-y-auto flex-1 p-3">
         <p className="text-center text-sm text-gray-500">
-          Choose your skill level to get questions tailored to your expertise
+          Choose Course You Want To Practice
         </p>
 
         {isLoading ? (
@@ -230,7 +227,7 @@ export default function Level({ isOpen, onClose, trackId }) {
                     level.questionTypes.map((qt, i) => (
                       <div key={i} className="flex justify-between items-center text-sm mb-1">
                         <div className="flex items-center gap-2">
-                          <img src={questionTypeIcons[qt.type]} alt={qt.type} className="w-4 h-4 mb-3" />
+                          <img src={questionTypeIcons[qt.type]} alt={qt.type} className="w-4 h-4 " />
                           <p>{qt.type}</p>
                         </div>
                         <span>{qt.count}</span>
@@ -244,6 +241,7 @@ export default function Level({ isOpen, onClose, trackId }) {
               <div className="flex justify-between items-center pt-2 text-xs text-gray-500">
                 <div className="flex items-center gap-4">
                   <span>🕒 {level.duration}</span>
+                  {console.log("level.trackQuestionsCount",level.trackQuestionsCount)}
                   <span className="text-[#1C79EA] cursor-pointer">{level.questionCount} questions</span>
                 </div>
                 <button
@@ -251,7 +249,7 @@ export default function Level({ isOpen, onClose, trackId }) {
                   onClick={() => openExamPage(level.id)}
                   disabled={isLoading}
                 >
-                  {isActiveSession ? 'Continue Learning' : 'Start Level'}
+                  {isActiveSession ? 'Continue Learning' : 'Start Course'}
                 </button>
               </div>
             </div>

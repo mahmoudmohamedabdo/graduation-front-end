@@ -4,13 +4,14 @@ import nextArrow from '../../../assets/Images/nextArrow.png';
 import Learning from '../../../assets/Images/LearningArrow.png';
 import Level from '../../Level/Level';
 
-export default function Card({ title, description, isPremium, price ,trackId}) {
+export default function Card({ title, description, isPremium, price, trackId, questionCount, levelCount }) {
   const [showModal, setShowModal] = useState(false);
+
+  console.log('Card props:', { title, description, isPremium, price, trackId, questionCount, levelCount });
 
   return (
     <>
       <div className="card w-96 bg-base-100 shadow-md text-center rounded-xl p-4 relative z-0">
-        {/* Badge in top-left corner */}
         <span
           className={`absolute top-2 left-2 text-xs font-semibold px-3 py-1 rounded-full shadow-sm ${
             isPremium
@@ -22,33 +23,27 @@ export default function Card({ title, description, isPremium, price ,trackId}) {
         </span>
 
         <div className="card-body">
-          {/* Logo and Title */}
           <div className="flex flex-col items-center mb-4">
             <img src={reactLogo} alt="Logo" className="w-20 h-20 mb-3" />
             <h2 className="text-xl font-semibold text-[#2563EB]">{title}</h2>
           </div>
 
-          {/* Description */}
           <div className="text-sm text-gray-600 mb-4">
             <p>{description}</p>
           </div>
 
-          {/* Info Badges */}
           <div className="flex justify-center gap-2 mb-5">
             <button className="btn rounded-full h-fit px-4 py-1 text-blue-600 bg-blue-100 text-xs">
-              2 skill Levels
+              {levelCount} {levelCount === 1 ? 'Courses' : 'Courses'}
             </button>
-            <button className="btn rounded-full h-fit px-4 py-1 text-gray-600 bg-gray-100 text-xs font-light">
-              7 questions
-            </button>
+           
           </div>
 
-         {isPremium && (price !== null && price !== undefined) && (
-  <div className="mb-3 text-sm text-gray-700 mt-1">
-    Price: <span className="font-bold text-green-600">{price === 0 ? "Free" : price}</span>
-  </div>
-)}
-
+          {isPremium && price !== null && price !== undefined && (
+            <div className="mb-3 text-sm text-gray-700 mt-1">
+              Price: <span className="font-bold text-green-600">{price === 0 ? 'Free' : price}</span>
+            </div>
+          )}
 
           <div className="mt-6 flex justify-center items-center text-center">
             <button
@@ -63,7 +58,7 @@ export default function Card({ title, description, isPremium, price ,trackId}) {
         </div>
       </div>
 
-     {showModal && (
+      {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black opacity-50"
@@ -73,7 +68,7 @@ export default function Card({ title, description, isPremium, price ,trackId}) {
             <Level
               isOpen={showModal}
               onClose={() => setShowModal(false)}
-              trackId={trackId} 
+              trackId={trackId}
             />
           </div>
         </div>

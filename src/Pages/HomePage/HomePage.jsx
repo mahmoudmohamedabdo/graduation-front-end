@@ -18,10 +18,12 @@ export default function HomePage() {
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
   const [courses, setCourses] = useState([]);
+  const [allCourses, setAllCourses] = useState([]); // Cache all courses
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [queryParam, setQueryParam] = useState('query');
+
+  const baseUrl = '/api/TrackCategories'; 
 
   const handleScroll = (direction) => {
     const container = scrollRef.current;
@@ -50,14 +52,18 @@ export default function HomePage() {
     const fetchCourses = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get('/api/TrackCategories/');
+        const response = await axios.get(`${baseUrl}/all`, {
+          headers: { Accept: 'text/plain' },
+        });
         const courseData = Array.isArray(response.data.data) ? response.data.data : [];
+        setAllCourses(courseData); // Cache all courses
         setCourses(courseData);
         setSearchMessage(courseData.length === 0 ? 'No courses found.' : '');
         console.log('Courses response:', response.data);
       } catch (err) {
         console.error('Error fetching courses:', err);
         setCourses([]);
+        setAllCourses([]);
         setSearchMessage('Error fetching courses. Please try again.');
       } finally {
         setIsLoading(false);
@@ -67,40 +73,32 @@ export default function HomePage() {
     fetchCourses();
   }, []);
 
-  // Handle search functionality
+  // Handle search functionality (client-side filtering)
   const handleSearch = async () => {
     setSearchMessage('');
     setIsLoading(true);
+
     if (!searchQuery.trim()) {
-      // Reload all courses if query is empty
-      try {
-        const response = await axios.get('/api/TrackCategories/');
-        const courseData = Array.isArray(response.data.data) ? response.data.data : [];
-        setCourses(courseData);
-        setSearchMessage(courseData.length === 0 ? 'No courses found.' : '');
-        console.log('Reloaded courses:', response.data);
-      } catch (error) {
-        console.error('Error reloading courses:', error);
-        setCourses([]);
-        setSearchMessage('Error reloading courses. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+      // Reset to all courses if query is empty
+      setCourses(allCourses);
+      setSearchMessage(allCourses.length === 0 ? 'No courses found.' : '');
+      setIsLoading(false);
       return;
     }
 
     try {
-      const searchUrl = `http://fit4job.runasp.net/api/TrackCategories/search/1/true?${queryParam}=${encodeURIComponent(searchQuery)}`;
-      console.log('Search URL:', searchUrl);
-      const response = await axios.get(searchUrl);
-      const searchResults = Array.isArray(response.data.data) ? response.data.data : [];
+      // Client-side filtering
+      const searchResults = allCourses.filter((course) =>
+        course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
       setCourses(searchResults);
       setSearchMessage(
         searchResults.length === 0
           ? `No courses found for "${searchQuery}".`
           : ''
       );
-      console.log('Search response:', response.data);
+      console.log('Filtered courses:', searchResults);
     } catch (error) {
       console.error('Error searching courses:', error);
       setCourses([]);
@@ -121,23 +119,7 @@ export default function HomePage() {
   const handleReset = () => {
     setSearchQuery('');
     setSearchMessage('');
-    setIsLoading(true);
-    const fetchCourses = async () => {
-      try {
-        const response = await axios.get('/api/TrackCategories/');
-        const courseData = Array.isArray(response.data.data) ? response.data.data : [];
-        setCourses(courseData);
-        setSearchMessage(courseData.length === 0 ? 'No courses found.' : '');
-        console.log('Reset courses:', response.data);
-      } catch (error) {
-        console.error('Error resetting courses:', error);
-        setCourses([]);
-        setSearchMessage('Error resetting courses. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCourses();
+    setCourses(allCourses); // Use cached courses
   };
 
   return (
@@ -156,83 +138,119 @@ export default function HomePage() {
                 Join thousands of developers who've landed their dream jobs. Practice with real interview questions,
                 get hired by top companies, and advance your career with our comprehensive platform.
               </p>
-              <div className="relative max-w-md mx-auto mt-6 flex items-center gap-2">
-                <div className="relative flex-grow">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Search courses..."
-                    className="w-full px-4 py-2 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E7CE8]"
-                    disabled={isLoading}
-                  />
-                  <FaSearch
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 cursor-pointer"
-                    onClick={handleSearch}
-                  />
-                </div>
-                {searchQuery && (
-                  <button
-                    onClick={handleReset}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                    disabled={isLoading}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-              {/* Feedback Messages */}
-              {isLoading && <p className="text-blue-500 mt-2 text-center">Searching...</p>}
-              {searchMessage && !isLoading && (
-                <p className="text-red-500 mt-2 text-center">{searchMessage}</p>
-              )}
             </div>
 
             {/* Hero Images */}
             <div className="users">
               <div className="row1 flex">
-                <div style={{ backgroundColor: '#428EB7', borderColor: '#F2F6FF' }}
-                  className="m-3 border-5 rounded-tl-4xl transition duration-300 ease-in-out hover:-translate-y-2 hover:-translate-x-2">
+                <div
+                  style={{ backgroundColor: '#428EB7', borderColor: '#F2F6FF' }}
+                  className="m-3 border-5 rounded-tl-4xl transition duration-300 ease-in-out hover:-translate-y-2 hover:-translate-x-2"
+                >
                   <img src={img1} alt="" className="w-full h-auto" />
                 </div>
-                <div style={{ backgroundColor: '#2485E4', borderColor: '#F2F6FF' }}
-                  className="m-3 border-5 rounded-tr-4xl transition duration-300 ease-in-out hover:-translate-y-2 hover:translate-x-2">
+                <div
+                  style={{ backgroundColor: '#2485E4', borderColor: '#F2F6FF' }}
+                  className="m-3 border-5 rounded-tr-4xl transition duration-300 ease-in-out hover:-_translate-y-2 hover:translate-x-2"
+                >
                   <img src={img2} alt="" />
                 </div>
               </div>
               <div className="row2 flex">
-                <div style={{ backgroundColor: '#2485E4', borderColor: '#F2F6FF' }}
-                  className="m-3 border-5 rounded-bl-4xl transition duration-300 ease-in-out hover:translate-y-2 hover:-translate-x-2">
+                <div
+                  style={{ backgroundColor: '#2485E4', borderColor: '#F2F6FF' }}
+                  className="m-3 border-5 rounded-bl-4xl transition duration-300 ease-in-out hover:translate-y-2 hover:-translate-x-2"
+                >
                   <img src={img3} alt="" />
                 </div>
-                <div style={{ backgroundColor: '#428EB7', borderColor: '#F2F6FF' }}
-                  className="m-3 border-4 rounded-br-4xl transition duration-300 ease-in-out hover:translate-y-2 hover:translate-x-2">
+                <div
+                  style={{ backgroundColor: '#428EB7', borderColor: '#F2F6FF' }}
+                  className="m-3 border-4 rounded-br-4xl transition duration-300 ease-in-out hover:translate-y-2 hover:translate-x-2"
+                >
                   <img src={img4} alt="" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section Title & Arrows */}
-          <div className="flex justify-between items-center mt-16 mb-4">
-            <h3 className="text-2xl font-semibold">All Tracks</h3>
-            <div className="icons flex items-center gap-2">
-              <button
-                onClick={() => handleScroll('left')}
-                disabled={isAtStart}
-                className={`${isAtStart ? 'opacity-30 cursor-not-allowed' : ''}`}
-              >
-                <img src={rightArrow} alt="Left" />
-              </button>
-              <button
-                onClick={() => handleScroll('right')}
-                disabled={isAtEnd}
-                className={`${isAtEnd ? 'opacity-30 cursor-not-allowed' : ''}`}
-              >
-                <img src={leftArrow} alt="Right" />
-              </button>
+          {/* Section Title, Arrows & Search */}
+          <div className="mt-16 mb-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-semibold">All Tracks</h3>
+              <div className="icons flex items-center gap-2">
+                <button
+                  onClick={() => handleScroll('left')}
+                  disabled={isAtStart}
+                  className={`${isAtStart ? 'opacity-30 cursor-not-allowed' : ''}`}
+                >
+                  <img src={rightArrow} alt="Left" />
+                </button>
+                <button
+                  onClick={() => handleScroll('right')}
+                  disabled={isAtEnd}
+                  className={`${isAtEnd ? 'opacity-30 cursor-not-allowed' : ''}`}
+                >
+                  <img src={leftArrow} alt="Right" />
+                </button>
+              </div>
             </div>
+
+            {/* Search Bar */}
+            <div className="relative max-w-md mx-auto mt-4 flex items-center gap-2">
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Search courses..."
+                  className="w-full px-4 py-2 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E7CE8]"
+                  disabled={isLoading}
+                />
+                <FaSearch
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 cursor-pointer"
+                  onClick={handleSearch}
+                />
+              </div>
+              {searchQuery && (
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  disabled={isLoading}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {/* Feedback Messages */}
+            {isLoading && (
+              <div className="text-center mt-2">
+                <svg
+                  className="animate-spin h-5 w-5 text-blue-500 mx-auto"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <p className="text-blue-500 mt-2">Searching...</p>
+              </div>
+            )}
+            {searchMessage && !isLoading && (
+              <p className="text-red-500 mt-2 text-center">{searchMessage}</p>
+            )}
           </div>
 
           {/* Course Cards */}

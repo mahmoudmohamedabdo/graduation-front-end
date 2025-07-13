@@ -27,6 +27,8 @@ function App() {
         <Route path="/exam" element={<ExamPage/>}/>
 
         <Route path="/home" element={<HomePage/>}/>
+        <Route path="/auth" element={<AuthSwitcher/>}/>
+
         <Route path="/level" element={<Level/>}/>
         <Route path="/exam" element={<ExamPage/>}/>
         <Route path="/track/:id" element={<Track/>}/>
