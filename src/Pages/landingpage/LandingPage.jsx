@@ -14,7 +14,7 @@ export default function LandingPage() {
   const navigate=useNavigate()
   const goToLoginPage=()=>
  {
-  navigate('/auth')
+  navigate('/login')
  }
   return (
     <div>

@@ -19,11 +19,12 @@ export default function HomePage() {
   const [isAtEnd, setIsAtEnd] = useState(false);
   const [courses, setCourses] = useState([]);
   const [allCourses, setAllCourses] = useState([]); // Cache all courses
+  const [jobs, setJobs] = useState([]); // State for jobs
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const baseUrl = '/api/TrackCategories'; 
+  const baseUrl = '/api/TrackCategories';
 
   const handleScroll = (direction) => {
     const container = scrollRef.current;
@@ -56,7 +57,7 @@ export default function HomePage() {
           headers: { Accept: 'text/plain' },
         });
         const courseData = Array.isArray(response.data.data) ? response.data.data : [];
-        setAllCourses(courseData); // Cache all courses
+        setAllCourses(courseData);
         setCourses(courseData);
         setSearchMessage(courseData.length === 0 ? 'No courses found.' : '');
         console.log('Courses response:', response.data);
@@ -73,13 +74,32 @@ export default function HomePage() {
     fetchCourses();
   }, []);
 
-  // Handle search functionality (client-side filtering)
+  // Fetch all jobs
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setIsLoading(true);
+      try {
+        const response = await axios.get('http://fit4job.runasp.net/api/Jobs');
+        const jobData = Array.isArray(response.data.data) ? response.data.data : [];
+        setJobs(jobData);
+        console.log('Jobs response:', response.data);
+      } catch (err) {
+        console.error('Error fetching jobs:', err);
+        setJobs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, []);
+
+  // Handle search functionality (client-side filtering for courses)
   const handleSearch = async () => {
     setSearchMessage('');
     setIsLoading(true);
 
     if (!searchQuery.trim()) {
-      // Reset to all courses if query is empty
       setCourses(allCourses);
       setSearchMessage(allCourses.length === 0 ? 'No courses found.' : '');
       setIsLoading(false);
@@ -87,7 +107,6 @@ export default function HomePage() {
     }
 
     try {
-      // Client-side filtering
       const searchResults = allCourses.filter((course) =>
         course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         course.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -119,7 +138,7 @@ export default function HomePage() {
   const handleReset = () => {
     setSearchQuery('');
     setSearchMessage('');
-    setCourses(allCourses); // Use cached courses
+    setCourses(allCourses);
   };
 
   return (
@@ -279,9 +298,13 @@ export default function HomePage() {
 
           {/* Job Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-2 text-center items-center">
-            {Array(4).fill().map((_, index) => (
-              <NewJops key={index} />
-            ))}
+            {isLoading ? (
+              <p className="text-center text-gray-500">Loading jobs...</p>
+            ) : jobs.length > 0 ? (
+              jobs.slice(0, 4).map((job) => <NewJops key={job.id} job={job} />)
+            ) : (
+              <p className="text-center text-gray-500">No jobs available.</p>
+            )}
           </div>
         </div>
       </main>

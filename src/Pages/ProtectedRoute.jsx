@@ -6,7 +6,7 @@ export default function ProtectedRoute({ children }) {
   const isAuthenticated = localStorage.getItem('username'); 
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;

@@ -7,7 +7,7 @@ function TrackCard({ name, description }) {
   const navigate=useNavigate()
  const goToLoginPage=()=>
  {
-  navigate('/auth')
+  navigate('/login')
  }
   return (
     <div className="border border-gray-200 rounded-xl shadow-sm w-[220px] p-4 text-left relative bg-white flex flex-col justify-between min-h-[260px]">

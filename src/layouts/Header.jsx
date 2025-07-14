@@ -1,8 +1,14 @@
-import React, { useState } from "react";
-import AuthSwitcher from "../Components/AuthSwitcher";
+import React, { useState, useEffect } from "react";
+import Login from "../Components/login";
 
 export default function Header() {
   const [showAuth, setShowAuth] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    setIsLoggedIn(!!token);
+  }, []);
 
   const openAuth = () => setShowAuth(true);
   const closeAuth = () => setShowAuth(false);
@@ -15,23 +21,25 @@ export default function Header() {
 
         {/* Buttons */}
         <div className="space-x-4 flex items-center">
-        
-          <button
-          onClick={openAuth}
-          className="btn bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 transition">
-            Login
-          </button>
+          {!isLoggedIn && (
+            <button
+              onClick={openAuth}
+              className="btn bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 transition"
+            >
+              Login
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Auth Modal */}
+      {/* Login Modal */}
       {showAuth && (
         <div
           onClick={closeAuth}
           className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
         >
           <div onClick={(e) => e.stopPropagation()} className="relative z-50">
-            <AuthSwitcher onClose={closeAuth} />
+            <Login onClose={closeAuth} />
           </div>
         </div>
       )}
