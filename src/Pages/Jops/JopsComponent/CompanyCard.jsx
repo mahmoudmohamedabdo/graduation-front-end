@@ -7,7 +7,6 @@ export default function CompanyCard() {
    navigae('/jopDetails')
     }
     return (
-
         <div className='flex flex-col items-center '>
             <div className="card card-border bg-base-100 w-[45rem] flex-col m-3 p-4">
                 <div className="content flex items-center justify-between gap-6">

@@ -14,6 +14,7 @@ import AuthSwitcher from "./Components/AuthSwitcher";
 import Profile from "./Pages/Profile";
 import MyLearning from "./Pages/MyLearning";
 import ProtectedRoute from "./Pages/ProtectedRoute";
+import VerifyCode from './Components/VerifyCode'
 import "./app.css";
 import "./index.css"; 
 
@@ -27,11 +28,12 @@ function App() {
         }}
       >
         <Routes>
-          {/* صفحات عامة */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/landingpage" element={<LandingPage />} />
           <Route path="/auth" element={<AuthSwitcher />} />
           <Route path="/quiz" element={<JobQuizPage />} />
+          <Route path="/verify" element={<VerifyCode />} />
+
 
           {/* صفحات محمية */}
           <Route path="/home" element={
@@ -46,7 +48,7 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute><Profile /></ProtectedRoute>
           } />
-          <Route path="/exam" element={
+          <Route path="/exam/:id" element={
             <ProtectedRoute><ExamPage /></ProtectedRoute>
           } />
           <Route path="/track/:id" element={

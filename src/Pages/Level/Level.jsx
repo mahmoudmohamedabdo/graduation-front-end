@@ -67,7 +67,7 @@ export default function Level({ isOpen, onClose, trackId }) {
   // Fetch levels from the API
   useEffect(() => {
     const fetchLevels = async () => {
-      if (!isOpen ) {
+      if (!isOpen) {
         console.log('Skipping fetchLevels: isOpen or categoryId missing', { isOpen });
         setError('Category ID is missing. Please select a valid category.');
         return;
@@ -146,7 +146,12 @@ export default function Level({ isOpen, onClose, trackId }) {
         if (fetchResponse.data && fetchResponse.data.data && fetchResponse.data.data.length > 0) {
           setTrackData(fetchResponse.data.data[0]);
         }
-        navigate('/exam');
+        // Use trackData.id (e.g., 7) for navigation if active session exists
+        if (trackData && trackData.id) {
+          navigate(`/exam/${trackData.id}`);
+        } else {
+          navigate(`/exam/${selectedTrackId}`);
+        }
       } else {
         alert('Failed to start exam: ' + createResponse.data.message);
       }
@@ -227,7 +232,7 @@ export default function Level({ isOpen, onClose, trackId }) {
                     level.questionTypes.map((qt, i) => (
                       <div key={i} className="flex justify-between items-center text-sm mb-1">
                         <div className="flex items-center gap-2">
-                          <img src={questionTypeIcons[qt.type]} alt={qt.type} className="w-4 h-4 " />
+                          <img src={questionTypeIcons[qt.type]} alt={qt.type} className="w-4 h-4" />
                           <p>{qt.type}</p>
                         </div>
                         <span>{qt.count}</span>
@@ -241,7 +246,6 @@ export default function Level({ isOpen, onClose, trackId }) {
               <div className="flex justify-between items-center pt-2 text-xs text-gray-500">
                 <div className="flex items-center gap-4">
                   <span>🕒 {level.duration}</span>
-                  {console.log("level.trackQuestionsCount",level.trackQuestionsCount)}
                   <span className="text-[#1C79EA] cursor-pointer">{level.questionCount} questions</span>
                 </div>
                 <button

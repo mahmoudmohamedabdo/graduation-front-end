@@ -10,7 +10,7 @@ const AuthSwitcher = ({ onClose }) => {
   const [accountType, setAccountType] = useState("user");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
+  
   const handleLogIn = async (e) => {
     e.preventDefault();
     const emailOrUsername = e.target.email.value.trim();
@@ -84,103 +84,99 @@ const AuthSwitcher = ({ onClose }) => {
     }
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
+ const handleSignup = async (e) => {
+  e.preventDefault();
 
-    const firstName = e.target.firstName.value.trim();
-    const lastName = e.target.lastName.value.trim();
-    const userName = e.target.userName.value.trim();
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value.trim();
-    const confirmPassword = e.target.confirmPassword.value.trim();
+  const firstName = e.target.firstName.value.trim();
+  const lastName = e.target.lastName.value.trim();
+  const userName = e.target.userName.value.trim();
+  const email = e.target.email.value.trim();
+  const password = e.target.password.value.trim();
+  const confirmPassword = e.target.confirmPassword.value.trim();
 
-    // Validate fields
-    if (password !== confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
-    if (!firstName || !lastName || !userName || !email) {
-      alert("Please fill all required fields");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      alert("Please enter a valid email");
-      return;
-    }
-    if (password.length < 6) {
-      alert("Password must be at least 6 characters");
-      return;
-    }
+  // Validate fields
+  if (password !== confirmPassword) {
+    alert("Passwords do not match");
+    return;
+  }
+  if (!firstName || !lastName || !userName || !email) {
+    alert("Please fill all required fields");
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    alert("Please enter a valid email");
+    return;
+  }
+  if (password.length < 6) {
+    alert("Password must be at least 6 characters");
+    return;
+  }
 
-    const userData = {
-      firstName,
-      lastName,
-      userName,
-      email,
-      password,
-      confirmPassword,
-      role: accountType === "user" ? "JobSeeker" : "Employer",
-    };
-
-    try {
-      const response = await fetch("/api/Auth/Registration/JobSeeker", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      });
-
-      console.log("Response status:", response.status);
-      console.log("Content-Type:", response.headers.get("content-type"));
-
-      const text = await response.text();
-      if (!text) {
-        throw new Error("Empty response from server");
-      }
-
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (error) {
-        console.error("Failed to parse response:", text);
-        throw new Error("Invalid response format");
-      }
-
-      if (response.ok) {
-        
-        console.log("Registration successful:", result);
-        // Store token if returned
-        if (result.data?.token && result.data?.email) {
-          localStorage.setItem("authToken", result.data.token);
-          localStorage.setItem("userEmail", result.data.email);
-          localStorage.setItem("username", result.data.username || userName);
-        }
-        if (result.errorCode === 120) {
-          alert("Email or Username is already registered.");
-          return;
-        }
-        alert("Account created successfully!");
-        setIsLogin(true);
-       
-      } else {
-
-
-      console.error("Registration failed:", result);
-        // Handle validation errors
-        let errorMessage = result.message || result.detail || "Unknown error";
-        if (result.errors && Object.keys(result.errors).length > 0) {
-          errorMessage = Object.values(result.errors)
-            .flat()
-            .join(", ");
-        }
-        alert(`Failed to register: ${errorMessage}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert(`An error occurred: ${error.message}`);
-    }
+  const userData = {
+    firstName,
+    lastName,
+    userName,
+    email,
+    password,
+    confirmPassword,
+    role: accountType === "user" ? "JobSeeker" : "Employer",
   };
+
+  try {
+    const response = await fetch("/api/Auth/Registration/JobSeeker", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    });
+
+    console.log("Response status:", response.status);
+    console.log("Content-Type:", response.headers.get("content-type"));
+
+    const text = await response.text();
+    if (!text) {
+      throw new Error("Empty response from server");
+    }
+
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (error) {
+      console.error("Failed to parse response:", text);
+      throw new Error("Invalid response format");
+    }
+
+    if (response.ok) {
+      // Store token if returned
+      if (result.data?.token && result.data?.email) {
+        localStorage.setItem("authToken", result.data.token);
+        localStorage.setItem("userEmail", result.data.email);
+        localStorage.setItem("username", result.data.username || userName);
+      }
+      if (result.errorCode === 120) {
+        alert("Email or Username is already registered.");
+        return;
+      }
+      alert("Account created successfully!");
+      // Navigate to verification page
+      navigate('/verify', { state: { email: email } }); // Pass email if needed in verify page
+    } else {
+      console.error("Registration failed:", result);
+      // Handle validation errors
+      let errorMessage = result.message || result.detail || "Unknown error";
+      if (result.errors && Object.keys(result.errors).length > 0) {
+        errorMessage = Object.values(result.errors)
+          .flat()
+          .join(", ");
+      }
+      alert(`Failed to register: ${errorMessage}`);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    alert(`An error occurred: ${error.message}`);
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-gray-50 bg-opacity-50 flex justify-center items-center z-50">

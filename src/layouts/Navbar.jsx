@@ -41,6 +41,8 @@ export default function Navbar() {
             <NavLink to="/home" className={({ isActive }) => getLinkClass(isActive)}>Home</NavLink>
             <NavLink to="/level" className={({ isActive }) => getLinkClass(isActive)}>Prepare</NavLink>
             <NavLink to="/jops" className={({ isActive }) => getLinkClass(isActive)}>Jobs</NavLink>
+            <NavLink to="/myLearning" className={({ isActive }) => getLinkClass(isActive)}>My Learning</NavLink>
+
           </div>
 
           {/* Profile Desktop */}
@@ -99,6 +101,8 @@ export default function Navbar() {
               <NavLink to="/home" className={({ isActive }) => getLinkClass(isActive)}>Home</NavLink>
               <NavLink to="/level" className={({ isActive }) => getLinkClass(isActive)}>Prepare</NavLink>
               <NavLink to="/jops" className={({ isActive }) => getLinkClass(isActive)}>Jobs</NavLink>
+              <NavLink to="/myLearning" className={({ isActive }) => getLinkClass(isActive)}>My Learning</NavLink>
+
             </div>
 
             {/* Divider */}
