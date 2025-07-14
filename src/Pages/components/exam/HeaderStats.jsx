@@ -1,15 +1,25 @@
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import useCountdown from "../../../Pages/hooks/useCountdown"; // تأكد إن المسار صحيح
+
 const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage }) => {
-  const navigate=useNavigate()
-  const BackToTracks=()=>
-  {
-navigate('/track')
-  }
+  const navigate = useNavigate();
+
+  // ⏱️ تايمر العد التنازلي (600 ثانية = 10 دقايق)
+  const [timeLeft, resetTimer, rawSeconds] = useCountdown(100);
+
+  const BackToTracks = () => {
+    navigate("/track");
+  };
+
   return (
     <div className="flex justify-between items-center mb-8">
+      {/* الرجوع */}
       <div className="flex items-center gap-4">
-        <ArrowLeftIcon className="w-5 h-5 text-gray-600 cursor-pointer" onClick={BackToTracks} />
+        <ArrowLeftIcon
+          className="w-5 h-5 text-gray-600 cursor-pointer"
+          onClick={BackToTracks}
+        />
         <div>
           <h2 className="text-xl font-bold text-gray-900">{trackName}</h2>
           <div className="flex items-center text-sm text-gray-500 gap-2 mt-1">
@@ -23,15 +33,31 @@ navigate('/track')
         </div>
       </div>
 
+      {/* الإحصائيات */}
       <div className="flex items-center gap-6">
+        {/* الأسئلة المجاوب عليها */}
         <div className="text-right">
           <p className="text-blue-600 font-bold text-sm">
             {questionsCompleted}/{totalQuestions}
           </p>
           <p className="text-xs text-gray-500">Questions Completed</p>
         </div>
+
+        {/* النسبة */}
         <div className="w-14 h-14 border rounded-full flex items-center justify-center">
           <span className="text-sm font-semibold text-blue-600">{percentage}%</span>
+        </div>
+
+        {/* التايمر */}
+        <div className="text-right">
+          <p
+            className={`text-sm font-semibold ${
+              rawSeconds <= 60 ? "text-red-600" : "text-gray-800"
+            }`}
+          >
+            {timeLeft}
+          </p>
+          <p className="text-xs text-gray-500">Est. 10 min</p>
         </div>
       </div>
     </div>

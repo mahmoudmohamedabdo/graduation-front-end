@@ -15,14 +15,12 @@ const useCountdown = (initialSeconds = 120) => {
   }, [initialSeconds]);
 
   const formatTime = (s) => {
-    const m = Math.floor(s / 60)
-      .toString()
-      .padStart(2, "0");
+    const m = Math.floor(s / 60).toString().padStart(2, "0");
     const sec = (s % 60).toString().padStart(2, "0");
     return `${m}:${sec}`;
   };
 
-  return [formatTime(secondsLeft), reset];
+  return [formatTime(secondsLeft), reset, secondsLeft]; // رجعنا الـ secondsLeft كمان
 };
 
 export default useCountdown;

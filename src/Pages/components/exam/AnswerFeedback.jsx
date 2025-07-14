@@ -1,24 +1,64 @@
+// AnswerFeedback.jsx
+import { useState } from "react";
+import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+
 const AnswerFeedback = ({ feedback, onClose }) => {
-  if (!feedback) return null;
+  const [showExplanation, setShowExplanation] = useState(false);
+  const isCorrect = feedback.correct;
 
   return (
-    <div className={`mt-6 p-4 rounded-md ${feedback.correct ? "bg-green-100" : "bg-red-100"}`}>
-      <p className="font-semibold mb-2">
-        {feedback.correct ? "Excellent! ✅" : "Not Quite Right ❌"}
-      </p>
-      <p className="text-sm mb-1">
-        Correct Answer: <span className="font-medium">{feedback.correctAnswer}</span>
-      </p>
-      {!feedback.correct && (
-        <p className="text-sm text-gray-700 mb-1">
-          Your Answer: <span className="italic">{feedback.userAnswer}</span>
-        </p>
-      )}
-      <p className="text-xs text-gray-700">{feedback.explanation}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+        <div className="flex justify-center mb-4">
+          {isCorrect ? (
+            <FaCheckCircle className="text-green-500 text-5xl" />
+          ) : (
+            <FaTimesCircle className="text-red-500 text-5xl" />
+          )}
+        </div>
 
-      <button className="mt-4 btn btn-outline btn-sm" onClick={onClose}>
-        Continue Learning
-      </button>
+        <h2 className={`text-center text-xl font-semibold mb-1 ${isCorrect ? "text-green-700" : "text-red-700"}`}>
+          {isCorrect ? "Excellent!" : "Not Quite Right"}
+        </h2>
+        <p className="text-center text-sm text-gray-600 mb-6">
+          {isCorrect
+            ? "You got it right! Great job."
+            : "Learning opportunity ahead!"}
+        </p>
+
+        {!isCorrect && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-3">
+            <p className="text-sm text-red-700 font-medium">Your Answer</p>
+            <p className="text-base text-red-900">{feedback.userAnswer}</p>
+          </div>
+        )}
+
+        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-3">
+          <p className="text-sm text-green-700 font-medium">Correct Answer</p>
+          <p className="text-base text-green-900">{feedback.correctAnswer}</p>
+        </div>
+
+        <div className="mb-6">
+          <button
+            className="w-full text-left text-sm text-blue-700 hover:underline"
+            onClick={() => setShowExplanation((prev) => !prev)}
+          >
+            {showExplanation ? "Hide" : "Why is this correct?"}
+          </button>
+          {showExplanation && (
+            <div className="mt-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+              {feedback.explanation}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl"
+        >
+          Continue Learning
+        </button>
+      </div>
     </div>
   );
 };
