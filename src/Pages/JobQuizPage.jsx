@@ -7,7 +7,7 @@ import JopNav from "../layouts/JopNav";
 export default function JobQuizPage() {
   const [selectedQuiz, setSelectedQuiz] = useState(null);
   const [showModal, setShowModal] = useState(false);
-
+  
   const quizzes = [
     {
       id: 1,

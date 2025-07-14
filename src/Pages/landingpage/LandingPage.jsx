@@ -9,8 +9,13 @@ import img1 from "../../assets/Images/img1.png";
 import img2 from "../../assets/Images/img2.png";
 import img3 from "../../assets/Images/img3.png";
 import img4 from "../../assets/Images/img4.png";
-
+import { useNavigate } from "react-router-dom";
 export default function LandingPage() {
+  const navigate=useNavigate()
+  const goToLoginPage=()=>
+ {
+  navigate('/auth')
+ }
   return (
     <div>
       <Header />
@@ -37,7 +42,7 @@ export default function LandingPage() {
                 companies, and advance your career with our comprehensive
                 platform.
               </p>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded inline-flex items-center gap-2">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded inline-flex items-center gap-2" onClick={goToLoginPage}>
                 Let's Practice
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

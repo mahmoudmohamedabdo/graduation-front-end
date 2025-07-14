@@ -1,9 +1,20 @@
-import React from 'react'
+import React, { useState } from 'react'
 import CompanyCard from './JopsComponent/CompanyCard'
 import Navbar from '../../layouts/Navbar'
-
+import { useEffect } from 'react'
+import axios from 'axios'
 
 export default function Jops() {
+  //const[jops,setJops]=useState([])
+  useEffect(()=>
+  {
+    axios.get('http://fit4job.runasp.net/api/Jobs')
+    .then(response=>{
+      console.log(response)
+    })
+  }
+
+  )
   return (
     <div className='bg-[#F8F8F8]'>
     <Navbar/>
