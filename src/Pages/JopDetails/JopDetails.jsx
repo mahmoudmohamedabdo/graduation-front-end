@@ -49,7 +49,7 @@ export default function JopDetails() {
                 <div className="bg-white p-4 shadow-sm">
                     <h2 className="text-xl font-semibold text-gray-800">{job.title}</h2>
                 </div>
-<JopNav id={id} />
+                <JopNav id={id} />
             </div>
 
             {/* Job Details */}

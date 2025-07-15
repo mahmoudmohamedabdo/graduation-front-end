@@ -1,20 +1,22 @@
-import React from 'react';
-import company from '../../../assets/Images/company.png';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import company from "../../../assets/Images/company.png";
+import { useNavigate } from "react-router-dom";
 
 export default function CompanyCard({ job }) {
   const navigate = useNavigate();
 
   const showJopDetails = () => {
-    navigate('/jopDetails', { state: { jobId: job.id } }); // Pass job id to jopDetails page
+    navigate(`/jopDetails/${job.id}`, { state: { jobId: job.id } });
   };
 
+  console.log("Job ID in CompanyCard:", job.id);
+
   // Fallback values if data is missing
-  const title = job.title || 'Unnamed Job';
-  const companyName = 'TechCompany'; // Placeholder, replace with actual company name if available
-  const location = 'New Cairo, Cairo'; // Placeholder, replace with actual location if available
-  const experience = job.yearsOfExperience || '3-5 Yrs of Exp';
-  const skills = job.requirements || 'No requirements available';
+  const title = job.title || "Unnamed Job";
+  const companyName = job.companyName || "TechCompany"; // Use job.companyName if available
+  const location = job.location || "New Cairo, Cairo"; // Use job.location if available
+  const experience = job.yearsOfExperience || "3-5 Yrs of Exp";
+  const skills = job.requirements || "No requirements available";
 
   return (
     <div className="flex flex-col items-center">
