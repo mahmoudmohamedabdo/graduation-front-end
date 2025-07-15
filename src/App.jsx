@@ -54,40 +54,9 @@ function App() {
  
 </Routes>
 
-
-          {/* صفحات محمية */}
-          <Route path="/home" element={
-            <ProtectedRoute><HomePage /></ProtectedRoute>
-          } />
-          <Route path="/level" element={
-            <ProtectedRoute><Level /></ProtectedRoute>
-          } />
-          <Route path="/myLearning" element={
-            <ProtectedRoute><MyLearning /></ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute><Profile /></ProtectedRoute>
-          } />
-          <Route path="/exam/:trackId" element=
-            {<ProtectedRoute><ExamPage /></ProtectedRoute>} />
-          
-          <Route path="/track/:id" element={
-            <ProtectedRoute><Track /></ProtectedRoute>
-          } />
-          <Route path="/jops" element={
-            <ProtectedRoute><Jops /></ProtectedRoute>
-          } />
-          <Route path="/jopDetails" element={
-            <ProtectedRoute><JopDetails /></ProtectedRoute>
-          } />
-          <Route path="/jopTask" element={
-            <ProtectedRoute><JopTask /></ProtectedRoute>
-          } />
-        </Routes>
-
       </BrowserRouter>
     </div>
   );
 }
 
-export default App;
+export default App;
