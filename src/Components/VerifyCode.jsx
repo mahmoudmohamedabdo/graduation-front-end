@@ -15,10 +15,12 @@ export default function VerifyCode() {
 
     const emailOrUsername = localStorage.getItem("userEmail") || localStorage.getItem("username");
     const userRole = localStorage.getItem("userRole");
+    const tempUserData = JSON.parse(localStorage.getItem("tempUserData"));
 
-    if (!emailOrUsername) {
-      setError("No email or username found. Please sign up again.");
+    if (!emailOrUsername || !userRole || !tempUserData) {
+      setError("No account details found. Please sign up again.");
       setIsLoading(false);
+      navigate("/signup");
       return;
     }
 
@@ -29,38 +31,47 @@ export default function VerifyCode() {
     }
 
     try {
-      const response = await fetch("http://fit4job.runasp.net/api/Authentication/Verify", {
+      const verifyEndpoint = "http://fit4job.runasp.net/api/Authentication/Verification";
+      const verifyPayload = {
+        emailOrUsername,
+        verificationCode: code.trim(),
+      };
+
+      console.log("Verification request:", verifyPayload);
+      const verifyResponse = await fetch(verifyEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailOrUsername, verificationCode: code.trim() }),
+        body: JSON.stringify(verifyPayload),
       });
 
-      console.log("Verification request:", { emailOrUsername, verificationCode: code.trim() });
-      console.log("Response status:", response.status);
+      console.log("Verification response status:", verifyResponse.status);
+      const verifyText = await verifyResponse.text();
+      console.log("Raw verification response:", verifyText);
 
-      const text = await response.text();
-      console.log("Raw response:", text);
-
-      if (!text) {
+      if (!verifyText) {
         throw new Error("Empty response from server");
       }
 
-      let result;
+      let verifyResult;
       try {
-        result = JSON.parse(text);
+        verifyResult = JSON.parse(verifyText);
       } catch (error) {
-        console.error("Failed to parse response:", text);
+        console.error("Failed to parse verification response:", verifyText);
         throw new Error("Invalid response format from server");
       }
 
-      console.log("Parsed response:", JSON.stringify(result, null, 2));
+      console.log("Parsed verification response:", JSON.stringify(verifyResult, null, 2));
 
-      if (response.ok && result.success) {
-        alert("Verification successful!");
-        navigate(userRole === "JobSeeker" ? "/jobs" : "/companydashboard");
+      if (verifyResponse.ok && verifyResult.success) {
+        alert("Account verified successfully!");
+        localStorage.removeItem("tempUserData");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("username");
+        localStorage.removeItem("userRole");
+        navigate(userRole === "JobSeeker" ? "/home" : "/companydashboard");
       } else {
-        let errorMessage = result.message || result.detail || "Unknown error";
-        if (result.errorCode === 120) {
+        let errorMessage = verifyResult.message || verifyResult.detail || "Invalid verification code";
+        if (verifyResult.errorCode === 120) {
           errorMessage = "Invalid or expired verification code.";
         }
         setError(errorMessage);
@@ -78,45 +89,31 @@ export default function VerifyCode() {
     setIsLoading(true);
 
     const email = localStorage.getItem("userEmail");
-    const userName = localStorage.getItem("username");
     const userRole = localStorage.getItem("userRole");
+    const tempUserData = JSON.parse(localStorage.getItem("tempUserData"));
 
-    if (!email || !userName || !userRole) {
+    if (!email || !userRole || !tempUserData) {
       setError("No account details found. Please sign up again.");
       setIsLoading(false);
+      navigate("/signup");
       return;
     }
 
-    const userData = {
-      email,
-      userName,
-      password: "TempPassword123!", // Dummy password, as backend may require it
-      confirmPassword: "TempPassword123!",
-      role: userRole,
-      ...(userRole === "JobSeeker" ? {
-        firstName: "Temp",
-        lastName: "User"
-      } : {
-        companyName: "Temp Company"
-      }),
-    };
-
     try {
-      const endpoint = userRole === "JobSeeker"
-        ? "http://fit4job.runasp.net/api/Authentication/Registration/JobSeeker"
-        : "http://fit4job.runasp.net/api/Authentication/Registration/Company";
+      // Try sending verification code via /Verification endpoint
+      const verifyEndpoint = "http://fit4job.runasp.net/api/Authentication/Verification";
+      const resendPayload = { emailOrUsername: email };
 
-      console.log("Resending code to:", endpoint);
-      console.log("Request payload:", JSON.stringify({ ...userData, password: "****", confirmPassword: "****" }, null, 2));
+      console.log("Resend verification request to:", verifyEndpoint);
+      console.log("Resend payload:", JSON.stringify(resendPayload, null, 2));
 
-      const response = await fetch(endpoint, {
+      const response = await fetch(verifyEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(resendPayload),
       });
 
       console.log("Resend response status:", response.status);
-
       const text = await response.text();
       console.log("Raw resend response:", text);
 
@@ -132,18 +129,67 @@ export default function VerifyCode() {
         throw new Error("Invalid response format from server");
       }
 
+      console.log("Parsed resend response:", JSON.stringify(result, null, 2));
+
       if (response.ok && result.success) {
         alert("Verification code resent successfully! Check your email.");
       } else {
-        let errorMessage = result.message || result.detail || "Unknown error";
-        if (result.errorCode === 120) {
-          errorMessage = "Email or Username is already registered.";
+        // Fallback to re-registering
+        const endpoint =
+          userRole === "JobSeeker"
+            ? "http://fit4job.runasp.net/api/Authentication/Registration/JobSeeker"
+            : "http://fit4job.runasp.net/api/Authentication/Registration/Company";
+
+        const payload = {
+          email: tempUserData.email,
+          userName: tempUserData.userName,
+          password: tempUserData.password,
+          confirmPassword: tempUserData.confirmPassword,
+          role: userRole,
+          ...(userRole === "JobSeeker"
+            ? { firstName: tempUserData.firstName, lastName: tempUserData.lastName }
+            : { companyName: tempUserData.companyName }),
+        };
+
+        console.log("Fallback resend registration request to:", endpoint);
+        console.log("Fallback request payload:", JSON.stringify({ ...payload, password: "****", confirmPassword: "****" }, null, 2));
+
+        const fallbackResponse = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        console.log("Fallback resend response status:", fallbackResponse.status);
+        const fallbackText = await fallbackResponse.text();
+        console.log("Raw fallback resend response:", fallbackText);
+
+        if (!fallbackText) {
+          throw new Error("Empty response from server");
         }
-        setError(`Failed to resend code: ${errorMessage}`);
+
+        let fallbackResult;
+        try {
+          fallbackResult = JSON.parse(fallbackText);
+        } catch (error) {
+          console.error("Failed to parse fallback resend response:", fallbackText);
+          throw new Error("Invalid response format from server");
+        }
+
+        if (fallbackResponse.ok && fallbackResult.success) {
+          alert("Verification code resent successfully! Check your email.");
+        } else {
+          let errorMessage = fallbackResult.message || fallbackResult.detail || "Unknown error";
+          if (fallbackResult.errorCode === 120) {
+            errorMessage = "Email or Username is already registered. Please sign up with a different email.";
+            navigate("/signup");
+          }
+          setError(`Failed to resend code: ${errorMessage}. If you didn’t receive a code, please contact support.`);
+        }
       }
     } catch (error) {
       console.error("Resend error:", error.message);
-      setError(`Failed to resend code: ${error.message}. Please try again or contact support.`);
+      setError(`Failed to resend code: ${error.message}. If you didn’t receive a code, please contact support.`);
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +197,6 @@ export default function VerifyCode() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Left: Form */}
       <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-8 bg-white rounded-l-[2rem]">
         <div className="w-full max-w-sm space-y-6">
           <button
@@ -178,8 +223,9 @@ export default function VerifyCode() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="W00bnl0k"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full border px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${error ? "border-red-500" : "border-gray-300"}`}
                 required
+                disabled={isLoading}
               />
               {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
               <div className="text-sm mt-2 text-gray-500">
@@ -206,7 +252,6 @@ export default function VerifyCode() {
         </div>
       </div>
 
-      {/* Right: Image */}
       <div className="hidden md:block w-1/2">
         <img
           src={auth}

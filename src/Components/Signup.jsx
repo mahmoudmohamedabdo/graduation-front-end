@@ -10,9 +10,31 @@ const Signup = () => {
   const [accountType, setAccountType] = useState("user");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    companyName: "",
+    userName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    api: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSendVerificationCode = async (e) => {
     e.preventDefault();
+    setErrors({
+      firstName: "",
+      lastName: "",
+      companyName: "",
+      userName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      api: "",
+    });
+    setIsLoading(true);
 
     const email = e.target.email.value.trim();
     const userName = e.target.userName.value.trim();
@@ -23,41 +45,67 @@ const Signup = () => {
     const lastName = e.target.lastName?.value?.trim();
 
     // Validation
+    let hasErrors = false;
+    const newErrors = { ...errors };
+
     if (accountType === "user") {
-      if (!firstName || !lastName || !userName || !email) {
-        alert("Please fill all required fields: First Name, Last Name, Username, Email");
-        return;
+      if (!firstName) {
+        newErrors.firstName = "First Name is required";
+        hasErrors = true;
       }
-      if (password !== confirmPassword) {
-        alert("Passwords do not match");
-        return;
+      if (!lastName) {
+        newErrors.lastName = "Last Name is required";
+        hasErrors = true;
       }
     } else if (accountType === "company") {
-      if (!companyName || !userName || !email) {
-        alert("Please fill all required fields: Company Name, Username, Email");
-        return;
-      }
-      if (password !== confirmPassword) {
-        alert("Passwords do not match");
-        return;
+      if (!companyName) {
+        newErrors.companyName = "Company Name is required";
+        hasErrors = true;
       }
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      alert("Please enter a valid email");
-      return;
+    if (!userName) {
+      newErrors.userName = "Username is required";
+      hasErrors = true;
+    } else if (userName.length < 3 || userName.length > 100) {
+      newErrors.userName = "Username must be between 3 and 100 characters";
+      hasErrors = true;
     }
-    if (password.length < 6) {
-      alert("Password must be at least 6 characters");
-      return;
+
+    if (!email) {
+      newErrors.email = "Email is required";
+      hasErrors = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Please enter a valid email";
+      hasErrors = true;
+    } else if (email.length < 3 || email.length > 100) {
+      newErrors.email = "Email must be between 3 and 100 characters";
+      hasErrors = true;
     }
-    if (userName.length < 3 || userName.length > 100) {
-      alert("Username must be between 3 and 100 characters");
+
+    if (!password) {
+      newErrors.password = "Password is required";
+      hasErrors = true;
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+      hasErrors = true;
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Confirm Password is required";
+      hasErrors = true;
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
+      setErrors(newErrors);
+      setIsLoading(false);
       return;
     }
 
-    // Store form data temporarily in localStorage
-    // SECURITY NOTE: Storing passwords in localStorage is insecure. Clear after verification or use a secure backend session.
+    // Save to localStorage
     const tempUserData = {
       email,
       userName,
@@ -72,14 +120,24 @@ const Signup = () => {
     localStorage.setItem("userRole", accountType === "user" ? "JobSeeker" : "Employer");
 
     try {
-      // Send request to generate verification code
-      const endpoint = 'http://fit4job.runasp.net/api/Authentication/Verification';
+      // Attempt registration to trigger verification code
+      const endpoint =
+        accountType === "user"
+          ? "http://fit4job.runasp.net/api/Authentication/Registration/JobSeeker"
+          : "http://fit4job.runasp.net/api/Authentication/Registration/Company";
+
       const payload = {
-        emailOrUsername: email,
+        email,
+        userName,
+        password,
+        confirmPassword,
+        role: accountType === "user" ? "JobSeeker" : "Employer",
+        ...(accountType === "user" ? { firstName, lastName } : { companyName }),
       };
 
-      console.log("Sending verification code request to:", endpoint);
-      console.log("Request payload:", JSON.stringify(payload, null, 2));
+      console.log("Email value:", email);
+      console.log("Registration request to:", endpoint);
+      console.log("Request payload:", JSON.stringify({ ...payload, password: "****", confirmPassword: "****" }, null, 2));
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -88,7 +146,6 @@ const Signup = () => {
       });
 
       console.log("Response status:", response.status);
-      console.log("Response headers:", [...response.headers.entries()]);
       const text = await response.text();
       console.log("Raw response:", text);
 
@@ -106,30 +163,53 @@ const Signup = () => {
 
       console.log("Parsed response:", JSON.stringify(result, null, 2));
 
-      if (response.ok) {
+      if (response.ok && result.success) {
         alert("Verification code sent to your email. Please check your inbox.");
         navigate("/verify");
       } else {
         let errorMessage = result.message || result.detail || "Unknown error";
-        if (response.status === 400 && result.errors?.VerificationCode) {
-          errorMessage = "Verification code is required. The endpoint may be incorrect. Please check the API documentation or contact support.";
+        if (response.status === 400 && result.errors) {
+          // Map API errors to fields
+          if (result.errors.Email) {
+            newErrors.email = result.errors.Email.join(", ");
+          }
+          if (result.errors.UserName) {
+            newErrors.userName = result.errors.UserName.join(", ");
+          }
+          if (result.errors.Password) {
+            newErrors.password = result.errors.Password.join(", ");
+          }
+          if (result.errors.ConfirmPassword) {
+            newErrors.confirmPassword = result.errors.ConfirmPassword.join(", ");
+          }
+          if (result.errors.CompanyName) {
+            newErrors.companyName = result.errors.CompanyName.join(", ");
+          }
+          if (result.errors.FirstName) {
+            newErrors.firstName = result.errors.FirstName.join(", ");
+          }
+          if (result.errors.LastName) {
+            newErrors.lastName = result.errors.LastName.join(", ");
+          }
+          setErrors(newErrors);
         } else if (response.status === 404) {
-          errorMessage = "Verification code endpoint not found. Please verify the endpoint or contact support.";
+          setErrors({ ...newErrors, api: "Registration endpoint not found. Please contact support." });
         } else if (result.errorCode === 120) {
-          errorMessage = "Email or Username is already registered.";
+          newErrors.email = "This email is already registered.";
+          setErrors({ ...newErrors, api: "Email or Username is already registered. Please use a different email or username." });
           localStorage.removeItem("tempUserData");
           localStorage.removeItem("userEmail");
           localStorage.removeItem("username");
           localStorage.removeItem("userRole");
-        } else if (result.errors && Object.keys(result.errors).length > 0) {
-          errorMessage = Object.values(result.errors).flat().join(", ");
+        } else {
+          setErrors({ ...newErrors, api: errorMessage });
         }
-        console.error("Failed to send verification code:", errorMessage, result);
-        alert(`Failed to send verification code: ${errorMessage}`);
       }
     } catch (error) {
       console.error("Error:", error.message);
-      alert(`An error occurred: ${error.message}. Please try again or contact support.`);
+      setErrors({ ...errors, api: `An error occurred: ${error.message}. Please try again or contact support.` });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -156,6 +236,7 @@ const Signup = () => {
             <h2 className="text-4xl font-extrabold mb-8 text-gray-900 text-center">
               Create an account
             </h2>
+            {errors.api && <p className="text-sm text-red-500 mb-4 text-center">{errors.api}</p>}
             <form className="space-y-5" onSubmit={handleSendVerificationCode}>
               {accountType === "user" ? (
                 <div className="grid grid-cols-2 gap-4">
@@ -165,9 +246,12 @@ const Signup = () => {
                       type="text"
                       name="firstName"
                       placeholder="Enter your first name"
-                      className="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400"
-                      required
+                      className={`w-full border p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 ${
+                        errors.firstName ? "border-red-500" : "border-gray-300"
+                      }`}
+                      disabled={isLoading}
                     />
+                    {errors.firstName && <p className="text-sm text-red-500 mt-1">{errors.firstName}</p>}
                   </div>
                   <div>
                     <label className="block text-sm text-gray-600 mb-1">Last name</label>
@@ -175,9 +259,12 @@ const Signup = () => {
                       type="text"
                       name="lastName"
                       placeholder="Enter your last name"
-                      className="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400"
-                      required
+                      className={`w-full border p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 ${
+                        errors.lastName ? "border-red-500" : "border-gray-300"
+                      }`}
+                      disabled={isLoading}
                     />
+                    {errors.lastName && <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>}
                   </div>
                 </div>
               ) : (
@@ -187,9 +274,12 @@ const Signup = () => {
                     type="text"
                     name="companyName"
                     placeholder="Enter your company name"
-                    className="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400"
-                    required
+                    className={`w-full border p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 ${
+                      errors.companyName ? "border-red-500" : "border-gray-300"
+                    }`}
+                    disabled={isLoading}
                   />
+                  {errors.companyName && <p className="text-sm text-red-500 mt-1">{errors.companyName}</p>}
                 </div>
               )}
               <div>
@@ -198,9 +288,12 @@ const Signup = () => {
                   type="text"
                   name="userName"
                   placeholder="Enter your username"
-                  className="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400"
-                  required
+                  className={`w-full border p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 ${
+                    errors.userName ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
                 />
+                {errors.userName && <p className="text-sm text-red-500 mt-1">{errors.userName}</p>}
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Email Address</label>
@@ -208,9 +301,12 @@ const Signup = () => {
                   type="email"
                   name="email"
                   placeholder="Enter your email"
-                  className="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400"
-                  required
+                  className={`w-full border p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 ${
+                    errors.email ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
                 />
+                {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-[#9794AA] mb-2">
@@ -222,17 +318,21 @@ const Signup = () => {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Password"
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] placeholder-gray-400 pr-10"
-                    required
+                    className={`w-full border p-3 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] placeholder-gray-400 pr-10 ${
+                      errors.password ? "border-red-500" : "border-gray-300"
+                    }`}
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-gray-500"
+                    disabled={isLoading}
                   >
                     {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                   </button>
                 </div>
+                {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password}</p>}
               </div>
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#9794AA] mb-2">
@@ -244,17 +344,21 @@ const Signup = () => {
                     name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm Password"
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] placeholder-gray-400 pr-10"
-                    required
+                    className={`w-full border p-3 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] placeholder-gray-400 pr-10 ${
+                      errors.confirmPassword ? "border-red-500" : "border-gray-300"
+                    }`}
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-3 text-gray-500"
+                    disabled={isLoading}
                   >
                     {showConfirmPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                   </button>
                 </div>
+                {errors.confirmPassword && <p className="text-sm text-red-500 mt-1">{errors.confirmPassword}</p>}
               </div>
               <div className="flex gap-4 mt-2">
                 <label
@@ -271,6 +375,7 @@ const Signup = () => {
                     className="hidden"
                     onChange={() => setAccountType("user")}
                     checked={accountType === "user"}
+                    disabled={isLoading}
                   />
                   As a Job Seeker
                 </label>
@@ -288,15 +393,17 @@ const Signup = () => {
                     className="hidden"
                     onChange={() => setAccountType("company")}
                     checked={accountType === "company"}
+                    disabled={isLoading}
                   />
                   As a Company
                 </label>
               </div>
               <button
                 type="submit"
-                className="w-full bg-[#2563EB] text-white py-3 rounded-md hover:bg-[#2546EB] transition font-semibold"
+                className="w-full bg-[#2563EB] text-white py-3 rounded-md hover:bg-[#2546EB] transition font-semibold disabled:bg-[#2546EB]/50"
+                disabled={isLoading}
               >
-                Send Verification Code
+                {isLoading ? "Processing..." : "Send Verification Code"}
               </button>
             </form>
             <p className="mt-6 text-sm text-gray-500 text-center">
@@ -304,6 +411,7 @@ const Signup = () => {
               <button
                 onClick={() => navigate("/login")}
                 className="text-[#2563EB] font-medium hover:underline"
+                disabled={isLoading}
               >
                 Login
               </button>

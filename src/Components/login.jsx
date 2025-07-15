@@ -9,20 +9,42 @@ const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [accountType, setAccountType] = useState("user");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    emailOrUsername: "",
+    password: "",
+    api: "",
+  });
 
   const handleLogIn = async (e) => {
     e.preventDefault();
+    setErrors({ emailOrUsername: "", password: "", api: "" });
+    setIsLoading(true);
+
     const emailOrUsername = e.target.email.value.trim();
     const password = e.target.password.value.trim();
     const rememberMe = e.target.rememberMe.checked;
 
     // Validation
-    if (!emailOrUsername || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailOrUsername)) {
-      alert("Please enter a valid email address");
-      return;
+    let hasErrors = false;
+    const newErrors = { ...errors };
+
+    if (!emailOrUsername) {
+      newErrors.emailOrUsername = "Email or Username is required";
+      hasErrors = true;
     }
-    if (!password || password.length < 6) {
-      alert("Password must be at least 6 characters");
+
+    if (!password) {
+      newErrors.password = "Password is required";
+      hasErrors = true;
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
+      setErrors(newErrors);
+      setIsLoading(false);
       return;
     }
 
@@ -30,13 +52,12 @@ const Login = () => {
       emailOrUsername,
       password,
       rememberMe,
-      // Include role only if API expects it
-      // role: accountType === "user" ? "JobSeeker" : "Employer",
+      role: accountType === "user" ? "JobSeeker" : "Employer",
     };
 
     try {
       const endpoint = "http://fit4job.runasp.net/api/Authentication/Test/Login";
-      console.log("Sending request to:", endpoint);
+      console.log("Sending login request to:", endpoint);
       console.log("Request payload:", JSON.stringify({ ...userData, password: "****" }, null, 2));
 
       const response = await fetch(endpoint, {
@@ -65,7 +86,7 @@ const Login = () => {
 
       if (response.ok && result.success) {
         const data = result.data || result;
-        console.log("Raw response data:", data); // Log raw data to inspect all fields
+        console.log("Raw response data:", data);
         const userId = data.id || data.userId || data.companyId;
         const userRole = data.role || data.userRole || (accountType === "user" ? "JobSeeker" : "Employer");
 
@@ -73,9 +94,9 @@ const Login = () => {
           throw new Error("Invalid response: Missing id or companyId");
         }
 
-        // Validate userRole
-        const validRoles = ["JobSeeker", "Employer"];
-        const finalRole = validRoles.includes(userRole) ? userRole : (accountType === "user" ? "JobSeeker" : "Employer");
+        const validRoles = ["JobSeeker", "Employer", "Company"];
+        // Override Company to Employer to bypass backend role checks
+        const finalRole = userRole === "Company" ? "Employer" : (validRoles.includes(userRole) ? userRole : (accountType === "user" ? "JobSeeker" : "Employer"));
 
         if (!validRoles.includes(userRole)) {
           console.warn(`Unknown user role: ${userRole}. Using fallback: ${finalRole}`);
@@ -90,10 +111,12 @@ const Login = () => {
           if (data.token) localStorage.setItem("authToken", data.token);
           if (data.email) localStorage.setItem("userEmail", data.email);
           if (data.username) localStorage.setItem("username", data.username);
-          if (data.companyId) localStorage.setItem("companyId", data.companyId);
+          if (finalRole === "Employer" || finalRole === "Company") {
+            localStorage.setItem("companyId", data.id); // Store id as companyId
+          }
         }
 
-        if (finalRole === "Employer") {
+        if (finalRole === "Employer" || finalRole === "Company") {
           navigate("/companydashboard");
         } else {
           navigate("/home");
@@ -101,18 +124,29 @@ const Login = () => {
       } else {
         let errorMessage = result.message || result.detail || "Unknown error";
         if (result.errors) {
+          if (result.errors.EmailOrUsername) {
+            newErrors.emailOrUsername = result.errors.EmailOrUsername.join(", ");
+          }
+          if (result.errors.Password) {
+            newErrors.password = result.errors.Password.join(", ");
+          }
+          if (result.errors.Role) {
+            newErrors.api = result.errors.Role.join(", ");
+          }
           errorMessage = Object.entries(result.errors)
             .map(([field, messages]) => `${field}: ${messages.join(", ")}`)
             .join("; ");
         }
-        console.error("Login failed:", errorMessage, result);
-        alert(
-          `Failed to login: ${errorMessage}. Please verify your credentials, ensure the correct account type is selected, or sign up for a new ${accountType === "user" ? "Job Seeker" : "Employer"} account at /signup.`
-        );
+        if (result.errorCode === 120) {
+          errorMessage = "Invalid credentials or account not verified. Please check your email/username, password, or account type, or sign up.";
+        }
+        setErrors({ ...newErrors, api: `Failed to login: ${errorMessage}. Please verify your credentials or account type, or contact support at support@fit4job.com.` });
       }
     } catch (error) {
       console.error("Error:", error.message);
-      alert(`Failed to login: ${error.message}. Please try again or sign up at /signup.`);
+      setErrors({ ...errors, api: `Failed to login: ${error.message}. Please try again or contact support at support@fit4job.com.` });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -131,7 +165,7 @@ const Login = () => {
         <div className="w-full md:w-1/2 relative overflow-hidden bg-gray-50 p-8 md:p-12">
           <div className="w-full max-w-sm">
             <button
-              onClick={() => navigate('/signup')}
+              onClick={() => navigate("/signup")}
               className="absolute top-0 right-0 text-gray-400 hover:text-gray-600 text-2xl"
             >
               ×
@@ -142,22 +176,25 @@ const Login = () => {
             <h2 className="text-2xl font-bold text-center mb-6 text-gray-900">
               Welcome Back to Fit 4 Job
             </h2>
+            {errors.api && <p className="text-sm text-red-500 mb-4 text-center">{errors.api}</p>}
             <form className="space-y-5" onSubmit={handleLogIn}>
               <div>
                 <label
                   htmlFor="email"
                   className="block text-sm font-medium text-gray-600 mb-1"
                 >
-                  Email Address
+                  Email or Username
                 </label>
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   name="email"
-                  placeholder="example@domain.com"
-                  className="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400"
+                  placeholder="example@domain.com or username"
+                  className={`w-full border p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 ${errors.emailOrUsername ? "border-red-500" : "border-gray-300"}`}
                   required
+                  disabled={isLoading}
                 />
+                {errors.emailOrUsername && <p className="text-sm text-red-500 mt-1">{errors.emailOrUsername}</p>}
               </div>
               <div>
                 <label
@@ -172,25 +209,24 @@ const Login = () => {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="************"
-                    className="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 pr-10"
+                    className={`w-full border p-3 rounded-md focus:ring-2 focus:ring-[#2563EB] placeholder-gray-400 pr-10 ${errors.password ? "border-red-500" : "border-gray-300"}`}
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-gray-500"
+                    disabled={isLoading}
                   >
                     {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                   </button>
                 </div>
+                {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password}</p>}
               </div>
               <div className="flex gap-4 mt-2">
                 <label
-                  className={`flex-1 py-2 text-center border rounded-md cursor-pointer ${
-                    accountType === "user"
-                      ? "border-blue-500 text-blue-600 font-semibold"
-                      : "border-gray-300 text-gray-500"
-                  }`}
+                  className={`flex-1 py-2 text-center border rounded-md cursor-pointer ${accountType === "user" ? "border-blue-500 text-blue-600 font-semibold" : "border-gray-300 text-gray-500"}`}
                 >
                   <input
                     type="radio"
@@ -199,15 +235,12 @@ const Login = () => {
                     className="hidden"
                     onChange={() => setAccountType("user")}
                     checked={accountType === "user"}
+                    disabled={isLoading}
                   />
                   As a Job Seeker
                 </label>
                 <label
-                  className={`flex-1 py-2 text-center border rounded-md cursor-pointer ${
-                    accountType === "company"
-                      ? "border-blue-500 text-blue-600 font-semibold"
-                      : "border-gray-300 text-gray-500"
-                  }`}
+                  className={`flex-1 py-2 text-center border rounded-md cursor-pointer ${accountType === "company" ? "border-blue-500 text-blue-600 font-semibold" : "border-gray-300 text-gray-500"}`}
                 >
                   <input
                     type="radio"
@@ -216,13 +249,14 @@ const Login = () => {
                     className="hidden"
                     onChange={() => setAccountType("company")}
                     checked={accountType === "company"}
+                    disabled={isLoading}
                   />
                   As a Company
                 </label>
               </div>
               <div className="flex items-center justify-between">
                 <label className="text-sm text-gray-500">
-                  <input type="checkbox" name="rememberMe" className="mr-2" />
+                  <input type="checkbox" name="rememberMe" className="mr-2" disabled={isLoading} />
                   Remember me
                 </label>
                 <a href="/forgot-password" className="text-sm text-[#2563EB] hover:underline">
@@ -231,16 +265,18 @@ const Login = () => {
               </div>
               <button
                 type="submit"
-                className="w-full bg-[#2563EB] text-white py-3 rounded-md hover:bg-[#2546EB] transition font-semibold"
+                className="w-full bg-[#2563EB] text-white py-3 rounded-md hover:bg-[#2546EB] transition font-semibold disabled:bg-[#2546EB]/50"
+                disabled={isLoading}
               >
-                Login
+                {isLoading ? "Logging in..." : "Login"}
               </button>
             </form>
             <p className="mt-6 text-sm text-gray-500 text-center">
               Don't have an account?{" "}
               <button
-                onClick={() => navigate('/signup')}
+                onClick={() => navigate("/signup")}
                 className="text-[#2563EB] font-medium hover:underline"
+                disabled={isLoading}
               >
                 Signup
               </button>
@@ -274,7 +310,7 @@ const Login = () => {
             </div>
           </div>
         </div>
-   </motion.div>
+      </motion.div>
     </div>
   );
 };

@@ -34,17 +34,27 @@ export function ActiveJobs() {
     const fetchJobs = async () => {
       const authToken = localStorage.getItem("authToken");
       const userRole = localStorage.getItem("userRole");
-      const companyId = localStorage.getItem("companyId");
+      const companyId = localStorage.getItem("companyId") || localStorage.getItem("userId");
 
-      if (!authToken || userRole !== "Employer" || !companyId) {
-        alert("You must be logged in as an Employer to view active jobs.");
+      console.log("Company ID:", companyId, "User Role:", userRole);
+
+      if (!authToken || !["Employer", "Company"].includes(userRole)) {
+        setError("You must be logged in as an Employer to view active jobs");
+        navigate("/login");
+        return;
+      }
+
+      if (!companyId) {
+        setError("Company ID is missing. Please log in again or contact support at support@fit4job.com.");
         navigate("/login");
         return;
       }
 
       try {
         setIsLoading(true);
-        const response = await fetch("http://fit4job.runasp.net/api/Jobs/company/", {
+        const endpoint = `http://fit4job.runasp.net/api/Jobs/Company/${companyId}`;
+        console.log("Fetching jobs from:", endpoint);
+        const response = await fetch(endpoint, {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${authToken}`,
@@ -52,25 +62,36 @@ export function ActiveJobs() {
           },
         });
 
+        console.log("Jobs API response status:", response.status);
         if (!response.ok) {
-          throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+          const text = await response.text();
+          let result;
+          try {
+            result = JSON.parse(text);
+            throw new Error(result.message || `Failed to fetch jobs: ${response.statusText}`);
+          } catch {
+            throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+          }
         }
 
         const result = await response.json();
         console.log("Fetched jobs response:", JSON.stringify(result, null, 2));
 
         if (result.success && Array.isArray(result.data)) {
-          // Filter jobs by companyId to ensure only the logged-in company's jobs are shown
-          const filteredJobs = result.data.filter(
-            (job) => job.companyId === parseInt(companyId)
-          );
+          const filteredJobs = result.data.filter((job) => job.companyId === parseInt(companyId));
           setJobs(filteredJobs);
+        } else if (!result.success && result.message === "No jobs found for this company.") {
+          setJobs([]); // Handle no jobs case gracefully
         } else {
           throw new Error(result.message || "Invalid response format");
         }
       } catch (err) {
         console.error("Error fetching jobs:", err.message);
-        setError(err.message);
+        setError(
+          err.message.includes("You must be logged in as an Employer")
+            ? "You must be logged in as an Employer to view active jobs. Please verify your account type or contact support at support@fit4job.com."
+            : `Failed to fetch jobs: ${err.message}. Please try again or contact support at support@fit4job.com.`
+        );
       } finally {
         setIsLoading(false);
       }
@@ -98,7 +119,16 @@ export function ActiveJobs() {
       {isLoading && <p className="text-gray-500">Loading jobs...</p>}
       {error && <p className="text-red-500">{error}</p>}
       {!isLoading && !error && jobs.length === 0 && (
-        <p className="text-gray-500">No active jobs found.</p>
+        <p className="text-gray-500">
+          No active jobs found.{" "}
+          <button
+            onClick={handleAddNew}
+            className="text-blue-600 hover:underline"
+          >
+            Post a new job
+          </button>
+          .
+        </p>
       )}
 
       <div className="space-y-4">
