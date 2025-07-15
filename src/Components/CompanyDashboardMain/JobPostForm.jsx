@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import { SidebarLayout } from "../../layouts/SidebarLayout";
+import { useNavigate, useLocation } from "react-router-dom";
 
-export default function JobPostForm({ refreshJobs }) {
+export default function JobPostForm() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const refreshJobs = location.state?.refreshJobs || (() => {});
+  const companyId = localStorage.getItem("companyId");
   const [formData, setFormData] = useState({
-    companyId: 2147483647, // Replace with dynamic ID from auth or context
+    companyId: companyId ? parseInt(companyId) : null,
     title: "",
     jobType: "",
     workLocationType: "",
@@ -16,8 +21,14 @@ export default function JobPostForm({ refreshJobs }) {
   });
   const [assessmentOption, setAssessmentOption] = useState("No additional steps");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState({}); // Store errors per field
+  const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
+
+  if (!companyId) {
+    setErrors({ general: "Company ID is missing. Please log in again." });
+    navigate("/login");
+    return null;
+  }
 
   const jobTypeMap = {
     Freelance: 1,
@@ -40,20 +51,17 @@ export default function JobPostForm({ refreshJobs }) {
     "High School": 5,
   };
 
-  // Handle input changes with real-time validation
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-    validateField(name, value); // Validate on change
+    validateField(name, value);
   };
 
-  // Validate a single field
   const validateField = (name, value) => {
     let fieldErrors = { ...errors };
-
     switch (name) {
       case "title":
         if (!value.trim()) {
@@ -97,15 +105,15 @@ export default function JobPostForm({ refreshJobs }) {
         }
         break;
       case "salaryRange":
-        if (value && !/^\.?\$\d{1,4}(,\d{3})*(,\d{2})?$/.test(value)) {
-          fieldErrors.salaryRange = "Salary Range must be in a valid format (e.g., $80,000 or .$,0468,21)";
+        if (value && !/^\$?\d{1,3}(,\d{3})*(\.\d{2})?$/.test(value)) {
+          fieldErrors.salaryRange = "Salary Range must be in a valid format (e.g., $80,000 or $80,000.00)";
         } else {
           delete fieldErrors.salaryRange;
         }
         break;
       case "yearsOfExperience":
-        if (value && !/^\d+[a-zA-Z0-9\s-]+$/.test(value)) {
-          fieldErrors.yearsOfExperience = "Years of Experience must be in a valid format (e.g., 2sy- 59-r593732)";
+        if (value && !/^\d+(\s*-\s*\d+)?(\s*years)?$/i.test(value)) {
+          fieldErrors.yearsOfExperience = "Years of Experience must be a number or range (e.g., 2 or 2-5 years)";
         } else {
           delete fieldErrors.yearsOfExperience;
         }
@@ -116,7 +124,6 @@ export default function JobPostForm({ refreshJobs }) {
     setErrors(fieldErrors);
   };
 
-  // Validate entire form
   const validateForm = () => {
     const fieldErrors = {};
     if (!formData.title.trim()) {
@@ -145,12 +152,12 @@ export default function JobPostForm({ refreshJobs }) {
       fieldErrors.requirements = "Job Requirements must be between 10 and 2,000 characters";
     }
 
-    if (formData.salaryRange && !/^\.?\$\d{1,4}(,\d{3})*(,\d{2})?$/.test(formData.salaryRange)) {
-      fieldErrors.salaryRange = "Salary Range must be in a valid format (e.g., $80,000 or .$,0468,21)";
+    if (formData.salaryRange && !/^\$?\d{1,3}(,\d{3})*(\.\d{2})?$/.test(formData.salaryRange)) {
+      fieldErrors.salaryRange = "Salary Range must be in a valid format (e.g., $80,000 or $80,000.00)";
     }
 
-    if (formData.yearsOfExperience && !/^\d+[a-zA-Z0-9\s-]+$/.test(formData.yearsOfExperience)) {
-      fieldErrors.yearsOfExperience = "Years of Experience must be in a valid format (e.g., 2sy- 59-r593732)";
+    if (formData.yearsOfExperience && !/^\d+(\s*-\s*\d+)?(\s*years)?$/i.test(formData.yearsOfExperience)) {
+      fieldErrors.yearsOfExperience = "Years of Experience must be a number or range (e.g., 2 or 2-5 years)";
     }
 
     setErrors(fieldErrors);
@@ -167,7 +174,7 @@ export default function JobPostForm({ refreshJobs }) {
       try {
         const payload = {
           ...formData,
-          companyId: 1,
+          companyId: parseInt(companyId),
           jobType: jobTypeMap[formData.jobType],
           workLocationType: locationTypeMap[formData.workLocationType],
           educationLevel: formData.educationLevel ? educationLevelMap[formData.educationLevel] : null,
@@ -175,13 +182,13 @@ export default function JobPostForm({ refreshJobs }) {
           yearsOfExperience: formData.yearsOfExperience || null,
         };
 
-        console.log("Sending payload:", JSON.stringify(payload, null, 2)); // Log payload
+        console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
         const response = await fetch("http://fit4job.runasp.net/api/Jobs", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`, // Include token if available
+            Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`,
           },
           body: JSON.stringify(payload),
         });
@@ -194,16 +201,14 @@ export default function JobPostForm({ refreshJobs }) {
         }
 
         const result = await response.json();
-        console.log("Created job response:", result);
+        console.log("Created job response:", JSON.stringify(result, null, 2));
 
         if (result.success) {
-          alert("Job Added Successfully"); // Display alert on success
+          alert("Job Added Successfully");
           setSuccess(true);
-          if (refreshJobs) {
-            refreshJobs();
-          }
+          refreshJobs();
           setFormData({
-            companyId: 1,
+            companyId: parseInt(companyId),
             title: "",
             jobType: "",
             workLocationType: "",
@@ -214,12 +219,13 @@ export default function JobPostForm({ refreshJobs }) {
             yearsOfExperience: "",
             isActive: true,
           });
+          navigate("/companydashboard");
         } else {
           throw new Error(result.message || "Unknown error during job creation");
         }
       } catch (err) {
-        setErrors({ general: err.message }); // Store general error
-        console.error("API Error:", err.message); // Log error
+        setErrors({ general: err.message });
+        console.error("API Error:", err.message);
       } finally {
         setIsSubmitting(false);
       }
