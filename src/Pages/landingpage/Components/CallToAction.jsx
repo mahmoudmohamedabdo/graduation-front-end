@@ -4,7 +4,7 @@ const CallToAction = () => {
   const navigate=useNavigate()
   const goToLoginPage=()=>
  {
-  navigate('/auth')
+  navigate('/login')
  }
   return (
     <section className="text-center py-12 px-4 bg-white">

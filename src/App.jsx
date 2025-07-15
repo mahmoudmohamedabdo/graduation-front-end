@@ -10,14 +10,17 @@ import Jops from "./Pages/Jops/Jops";
 import JopDetails from "./Pages/JopDetails/JopDetails";
 import JopTask from "./Pages/JopTask/JopTask";
 import JobQuizPage from "./Pages/JobQuizPage";
-import AuthSwitcher from "./Components/AuthSwitcher";
 import Profile from "./Pages/Profile";
 import MyLearning from "./Pages/MyLearning";
 import ProtectedRoute from "./Pages/ProtectedRoute";
 import VerifyCode from './Components/VerifyCode'
+import CompanyDashboard from "./Components/CompanyDashboardMain/Dashboard/CompanyDashboard";
+import JobPostForm from "./Components/CompanyDashboardMain/JobPostForm";
+import CompanyProfile from "./Components/CompanyDashboardMain/CompanyProfile";
 import "./app.css";
 import "./index.css"; 
-
+import Login from "./Components/login";
+import Signup from "./Components/SignUp";
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -28,11 +31,28 @@ function App() {
         }}
       >
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/landingpage" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthSwitcher />} />
-          <Route path="/quiz" element={<JobQuizPage />} />
-          <Route path="/verify" element={<VerifyCode />} />
+  <Route path="/" element={<LandingPage />} />
+  <Route path="/landingpage" element={<LandingPage />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/signup" element={<Signup />} />
+  <Route path="/companydashboard" element={<CompanyDashboard/>}/>
+ <Route path="/company-profile" element={<CompanyProfile />} />
+ <Route path="/job-quiz" element={<JobPostForm/>} />
+
+  <Route path="/create-job" element={<JobPostForm />} />
+  <Route path="/quiz" element={<JobQuizPage />} />
+  <Route path="/verify" element={<VerifyCode />} />
+  <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+  <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
+  <Route path="/myLearning" element={<ProtectedRoute><MyLearning /></ProtectedRoute>} />
+  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+  <Route path="/exam/:id" element={<ProtectedRoute><ExamPage /></ProtectedRoute>} />
+  <Route path="/track/:id" element={<ProtectedRoute><Track /></ProtectedRoute>} />
+  <Route path="/jops" element={<ProtectedRoute><Jops /></ProtectedRoute>} />
+  <Route path="/jopDetails/:id" element={<ProtectedRoute><JopDetails /></ProtectedRoute>} />
+  <Route path="/jopTask" element={<ProtectedRoute><JopTask /></ProtectedRoute>} />
+ 
+</Routes>
 
 
           {/* صفحات محمية */}
@@ -64,6 +84,7 @@ function App() {
             <ProtectedRoute><JopTask /></ProtectedRoute>
           } />
         </Routes>
+
       </BrowserRouter>
     </div>
   );
