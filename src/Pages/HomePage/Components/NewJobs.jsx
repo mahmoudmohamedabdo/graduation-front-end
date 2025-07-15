@@ -43,7 +43,7 @@ export default function NewJops({ job }) {
             className="btn w-full rounded-full text-white bg-[#1C79EA]"
             onClick={openJopDetailsPage}
           >
-            Apply Now
+            View Details
           </button>
         </div>
       </div>

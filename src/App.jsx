@@ -18,7 +18,7 @@ import CompanyDashboard from "./Components/CompanyDashboardMain/Dashboard/Compan
 import JobPostForm from "./Components/CompanyDashboardMain/JobPostForm";
 import CompanyProfile from "./Components/CompanyDashboardMain/CompanyProfile";
 import "./app.css";
-import "./index.css"; 
+import "./index.css";
 import Login from "./Components/login";
 import Signup from "./Components/SignUp";
 function App() {
@@ -31,28 +31,26 @@ function App() {
         }}
       >
         <Routes>
-  <Route path="/" element={<LandingPage />} />
-  <Route path="/landingpage" element={<LandingPage />} />
-  <Route path="/login" element={<Login />} />
-  <Route path="/signup" element={<Signup />} />
-  <Route path="/companydashboard" element={<CompanyDashboard/>}/>
- <Route path="/company-profile" element={<CompanyProfile />} />
- <Route path="/job-quiz" element={<JobPostForm/>} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/landingpage" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/companydashboard" element={<CompanyDashboard />} />
+          <Route path="/company-profile" element={<CompanyProfile />} />
+          <Route path="/job-quiz/:id" element={<JobPostForm />} />
+          <Route path="/quiz" element={<JobQuizPage />} />
+          <Route path="/verify" element={<VerifyCode />} />
+          <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
+          <Route path="/myLearning" element={<ProtectedRoute><MyLearning /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/exam/:id" element={<ProtectedRoute><ExamPage /></ProtectedRoute>} />
+          <Route path="/track/:id" element={<ProtectedRoute><Track /></ProtectedRoute>} />
+          <Route path="/jops" element={<ProtectedRoute><Jops /></ProtectedRoute>} />
+          <Route path="/jopDetails/:id" element={<ProtectedRoute><JopDetails /></ProtectedRoute>} />
+          <Route path="/jopTask" element={<ProtectedRoute><JopTask /></ProtectedRoute>} />
 
-  <Route path="/create-job" element={<JobPostForm />} />
-  <Route path="/quiz" element={<JobQuizPage />} />
-  <Route path="/verify" element={<VerifyCode />} />
-  <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-  <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
-  <Route path="/myLearning" element={<ProtectedRoute><MyLearning /></ProtectedRoute>} />
-  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-  <Route path="/exam/:id" element={<ProtectedRoute><ExamPage /></ProtectedRoute>} />
-  <Route path="/track/:id" element={<ProtectedRoute><Track /></ProtectedRoute>} />
-  <Route path="/jops" element={<ProtectedRoute><Jops /></ProtectedRoute>} />
-  <Route path="/jopDetails/:id" element={<ProtectedRoute><JopDetails /></ProtectedRoute>} />
-  <Route path="/jopTask" element={<ProtectedRoute><JopTask /></ProtectedRoute>} />
- 
-</Routes>
+        </Routes>
 
       </BrowserRouter>
     </div>
