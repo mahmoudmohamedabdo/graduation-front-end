@@ -35,7 +35,7 @@ const Login = () => {
     };
 
     try {
-      const endpoint = "http://fit4job.runasp.net/api/Auth/Login";
+      const endpoint = "http://fit4job.runasp.net/api/Authentication/Test/Login";
       console.log("Sending request to:", endpoint);
       console.log("Request payload:", JSON.stringify({ ...userData, password: "****" }, null, 2));
 
