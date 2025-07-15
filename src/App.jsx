@@ -48,9 +48,9 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute><Profile /></ProtectedRoute>
           } />
-          <Route path="/exam/:id" element={
-            <ProtectedRoute><ExamPage /></ProtectedRoute>
-          } />
+          <Route path="/exam/:trackId" element=
+            {<ProtectedRoute><ExamPage /></ProtectedRoute>} />
+          
           <Route path="/track/:id" element={
             <ProtectedRoute><Track /></ProtectedRoute>
           } />
