@@ -2,13 +2,12 @@ import React, { useState, useEffect } from "react";
 import { MoreVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export function ActiveJobs() {
+export default function ActiveJobs({ refreshKey, refreshJobs }) {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Mappings from JobPostForm.jsx
   const jobTypeMap = {
     1: "Freelance",
     2: "Part-Time",
@@ -31,6 +30,7 @@ export function ActiveJobs() {
   };
 
   useEffect(() => {
+    let isMounted = true;
     const fetchJobs = async () => {
       const authToken = localStorage.getItem("authToken");
       const userRole = localStorage.getItem("userRole");
@@ -39,25 +39,29 @@ export function ActiveJobs() {
       console.log("Company ID:", companyId, "User Role:", userRole);
 
       if (!authToken || !["Employer", "Company"].includes(userRole)) {
-        setError("You must be logged in as an Employer to view active jobs");
-        navigate("/login");
+        if (isMounted) {
+          setError("You must be logged in as an Employer to view active jobs");
+          navigate("/login");
+        }
         return;
       }
 
       if (!companyId) {
-        setError("Company ID is missing. Please log in again or contact support at support@fit4job.com.");
-        navigate("/login");
+        if (isMounted) {
+          setError("Company ID is missing. Please log in again or contact support at support@fit4job.com.");
+          navigate("/login");
+        }
         return;
       }
 
       try {
         setIsLoading(true);
-        const endpoint = `http://fit4job.runasp.net/api/Jobs/Company/${companyId}`;
+        const endpoint = `http://fit4job.runasp.net/api/Jobs/Company/${companyId}?t=${Date.now()}`;
         console.log("Fetching jobs from:", endpoint);
         const response = await fetch(endpoint, {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${authToken}`,
+            Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
         });
@@ -78,30 +82,35 @@ export function ActiveJobs() {
         console.log("Fetched jobs response:", JSON.stringify(result, null, 2));
 
         if (result.success && Array.isArray(result.data)) {
-          const filteredJobs = result.data.filter((job) => job.companyId === parseInt(companyId));
-          setJobs(filteredJobs);
-        } else if (!result.success && result.message === "No jobs found for this company.") {
-          setJobs([]); // Handle no jobs case gracefully
+          const filteredJobs = result.data.filter((job) => String(job.companyId) === String(companyId));
+          if (isMounted) setJobs(filteredJobs);
+        } else if (result.errorCode === 101 || result.message === "No jobs found for this company.") {
+          if (isMounted) setJobs([]);
         } else {
           throw new Error(result.message || "Invalid response format");
         }
       } catch (err) {
         console.error("Error fetching jobs:", err.message);
-        setError(
-          err.message.includes("You must be logged in as an Employer")
-            ? "You must be logged in as an Employer to view active jobs. Please verify your account type or contact support at support@fit4job.com."
-            : `Failed to fetch jobs: ${err.message}. Please try again or contact support at support@fit4job.com.`
-        );
+        if (isMounted) {
+          setError(
+            err.message.includes("You must be logged in as an Employer")
+              ? "You must be logged in as an Employer to view active jobs. Please verify your account type or contact support at support@fit4job.com."
+              : `Failed to fetch jobs: ${err.message}. Please try again or contact support at support@fit4job.com.`
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     fetchJobs();
-  }, [navigate]);
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, refreshKey]);
 
   const handleAddNew = () => {
-    navigate("/job-post");
+    navigate("/job-post", { state: { refreshJobs } });
   };
 
   return (
@@ -121,13 +130,10 @@ export function ActiveJobs() {
       {!isLoading && !error && jobs.length === 0 && (
         <p className="text-gray-500">
           No active jobs found.{" "}
-          <button
-            onClick={handleAddNew}
-            className="text-blue-600 hover:underline"
-          >
+          <button onClick={handleAddNew} className="text-blue-600 hover:underline">
             Post a new job
-          </button>
-          .
+          </button>{" "}
+          or verify your account settings if you recently added a job.
         </p>
       )}
 
