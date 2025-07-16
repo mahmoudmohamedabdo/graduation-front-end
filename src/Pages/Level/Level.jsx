@@ -26,29 +26,35 @@ export default function Level({ isOpen, onClose, trackId }) {
   const navigate = useNavigate();
   const userId = localStorage.getItem('userId');
   const [levels, setLevels] = useState([]);
+  const [attempts, setAttempts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   console.log('Level component props:', { isOpen, trackId, userId });
 
-  // Fetch levels from the API
+  // جلب المستويات وبيانات المحاولات
   useEffect(() => {
-    const fetchLevels = async () => {
-      if (!isOpen) {
-        console.log('Skipping fetchLevels: isOpen or categoryId missing', { isOpen });
-        setError('Category ID is missing. Please select a valid category.');
+    const fetchLevelsAndAttempts = async () => {
+      if (!isOpen || !trackId || !userId) {
+        console.log('Skipping fetchLevels: missing isOpen, trackId, or userId', { isOpen, trackId, userId });
+        setError('Missing required data. Please ensure you are logged in and have selected a valid track.');
         return;
       }
+
       setIsLoading(true);
       setError(null);
+
       try {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('No auth token found in localStorage');
-        console.log('Fetching levels for categoryId:', trackId);
-        const response = await axios.get(`/api/Tracks/by-category/${trackId}`, {
+
+        // جلب المستويات
+        console.log('Fetching levels for trackId:', trackId);
+        const response = await axios.get(`http://fit4job.runasp.net/api/Tracks/by-category/${trackId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Raw fetched levels data:', response.data);
+
         if (response.data && response.data.data && Array.isArray(response.data.data)) {
           const formattedLevels = response.data.data.map(level => ({
             levelName: level.name || 'Unnamed Level',
@@ -68,8 +74,39 @@ export default function Level({ isOpen, onClose, trackId }) {
             id: level.id,
           }));
           setLevels(formattedLevels);
+
+          // جلب بيانات المحاولات
+          const attemptsData = {};
+          await Promise.all(
+            formattedLevels.map(async (level) => {
+              try {
+                const attemptId = localStorage.getItem(`attemptId_${level.id}`);
+                if (attemptId) {
+                  const attemptResponse = await axios.get(
+                    `http://fit4job.runasp.net/api/TrackAttempts/${attemptId}`,
+                    {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }
+                  );
+                  console.log(`Attempt data for track ${level.id}:`, attemptResponse.data);
+                  if (attemptResponse.data.success && attemptResponse.data.data) {
+                    attemptsData[level.id] = attemptResponse.data.data;
+                  } else {
+                    attemptsData[level.id] = null;
+                  }
+                } else {
+                  attemptsData[level.id] = null;
+                }
+              } catch (err) {
+                console.warn(`No attempt found for track ${level.id}:`, err.response?.data || err.message);
+                attemptsData[level.id] = null; // لا توجد محاولة
+              }
+            })
+          );
+          setAttempts(attemptsData);
+
           if (formattedLevels.length === 0) {
-            setError('No levels found for this category.');
+            setError('No levels found for this track.');
           }
         } else {
           console.warn('Invalid or empty levels data:', response.data);
@@ -84,8 +121,9 @@ export default function Level({ isOpen, onClose, trackId }) {
         setIsLoading(false);
       }
     };
-    fetchLevels();
-  }, [isOpen]);
+
+    fetchLevelsAndAttempts();
+  }, [isOpen, trackId, userId]);
 
   const openExamPage = async (selectedTrackId) => {
     const token = localStorage.getItem('authToken');
@@ -99,13 +137,25 @@ export default function Level({ isOpen, onClose, trackId }) {
       setIsLoading(true);
       setError(null);
 
-      await axios.post(
-        '/api/TrackAttempts/create',
-        { userId, trackId: selectedTrackId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // إنشاء محاولة جديدة فقط إذا لم تكن هناك محاولة قائمة أو إذا كانت مكتملة
+      if (!attempts[selectedTrackId] || attempts[selectedTrackId].endTime) {
+        console.log(`Creating new attempt for track ${selectedTrackId}`);
+        const response = await axios.post(
+          'http://fit4job.runasp.net/api/TrackAttempts/create',
+          { userId, trackId: selectedTrackId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('Attempt creation response:', response.data);
+        // تحديث حالة المحاولات
+        setAttempts(prev => ({
+          ...prev,
+          [selectedTrackId]: response.data.data,
+        }));
+        // تخزين attemptId في localStorage
+        localStorage.setItem(`attemptId_${selectedTrackId}`, response.data.data.id);
+      }
 
-      // Navigate directly using selectedTrackId (بدون انتظار trackData)
+      console.log(`Navigating to /exam/${selectedTrackId}`);
       navigate(`/exam/${selectedTrackId}`);
     } catch (error) {
       console.error('Error starting exam:', error.response?.data || error.message);
@@ -119,6 +169,19 @@ export default function Level({ isOpen, onClose, trackId }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // تحديد نص الزر بناءً على حالة المحاولة
+  const getButtonText = (trackId) => {
+    const attempt = attempts[trackId];
+    console.log(`getButtonText for track ${trackId}:`, { attempt });
+    if (attempt) {
+      if (attempt.endTime || attempt.progressPercentage === 100) {
+        return 'Completed';
+      }
+      return 'Continue Course';
+    }
+    return 'Start Course';
   };
 
   if (!isOpen) {
@@ -150,7 +213,7 @@ export default function Level({ isOpen, onClose, trackId }) {
         ) : error ? (
           <p className="text-center text-red-500">{error}</p>
         ) : levels.length === 0 ? (
-          <p className="text-center text-gray-500">No levels available for this category.</p>
+          <p className="text-center text-gray-500">No levels available for this track.</p>
         ) : (
           levels.map((level, index) => (
             <div key={index} className="bg-gray-50 p-4 rounded-xl space-y-3">
@@ -198,11 +261,15 @@ export default function Level({ isOpen, onClose, trackId }) {
                   <span className="text-[#1C79EA] cursor-pointer">{level.questionCount} questions</span>
                 </div>
                 <button
-                  className={`btn btn-sm rounded-full px-4 bg-[#1C79EA] hover:bg-[#2546EB] text-white`}
+                  className={`btn btn-sm rounded-full px-4 text-white ${
+                    attempts[level.id] && (attempts[level.id].endTime || attempts[level.id].progressPercentage === 100)
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-[#1C79EA] hover:bg-[#2546EB]'
+                  }`}
                   onClick={() => openExamPage(level.id)}
-                  disabled={isLoading}
+                  disabled={isLoading || (attempts[level.id] && (attempts[level.id].endTime || attempts[level.id].progressPercentage === 100))}
                 >
-                  Start Course
+                  {getButtonText(level.id)}
                 </button>
               </div>
             </div>

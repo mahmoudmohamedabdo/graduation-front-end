@@ -1,123 +1,55 @@
-
-// const QuestionModal = ({ question, onClose, onSubmit }) => {
-//   const [selected, setSelected] = useState(null);
-//   const [showFeedback, setShowFeedback] = useState(false);
-//   const [feedback, setFeedback] = useState(null);
-//   const [timeLeft, reset] = useCountdown(120);
-
-//   useEffect(() => {
-//     reset();
-//   }, [question]);
-
-//   const handleSubmit = async () => {
-//     const isCorrect = selected === question.correctAnswer;
-//     setFeedback({
-//       correct: isCorrect,
-//       userAnswer: selected,
-//       correctAnswer: question.correctAnswer,
-//       explanation: question.explanation,
-//     });
-//     setShowFeedback(true);
-//     onSubmit(isCorrect);
-//   };
-
-//   if (!question) return null;
-
-//   return (
-//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
-//       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 pointer-events-auto">
-//         <div className="bg-gradient-to-r from-white to-blue-50 rounded-t-2xl px-6 py-4 flex justify-between items-center">
-//           <h3 className="text-lg font-semibold text-gray-900">Practice Question</h3>
-//           <div className="flex items-center gap-1 bg-white shadow px-3 py-1 rounded-md">
-//             <IoMdCheckmarkCircleOutline className="text-blue-600 text-sm" />
-//             <span className="text-xs font-mono text-gray-700">{timeLeft}</span>
-//           </div>
-//         </div>
-
-//         <div className="p-6">
-//           <div className="mb-4">
-//             <h4 className="font-bold text-md text-gray-900 mb-1">{question.title}</h4>
-//             <p className="text-sm text-gray-500">{question.description}</p>
-//           </div>
-
-//           {!showFeedback && (
-//             <div className="space-y-3 mb-6">
-//               {question.options.map((opt, idx) => (
-//                 <label key={idx} className="flex items-center border rounded-lg px-4 py-3 cursor-pointer text-sm font-medium">
-//                   <input
-//                     type="radio"
-//                     name="answer"
-//                     value={opt}
-//                     onChange={() => setSelected(opt)}
-//                     className="mr-3"
-//                   />
-//                   {opt}
-//                 </label>
-//               ))}
-//               <button onClick={handleSubmit} className="w-full flex justify-center items-center gap-2 bg-indigo-600 text-white py-2.5 rounded-xl">
-//                 Submit Answer
-//               </button>
-//             </div>
-//           )}
-
-//           {showFeedback && (
-//             <div className={`rounded-xl px-6 py-8 text-center space-y-5 ${feedback.correct ? "bg-green-50" : "bg-red-50"}`}>
-//               <div className="flex justify-center">
-//                 <div className={`${feedback.correct ? "bg-green-100" : "bg-red-100"} p-3 rounded-full shadow-md`}>
-//                   {feedback.correct ? <IoMdCheckmarkCircleOutline className="text-green-600 text-4xl" /> : <MdClose className="text-red-600 text-4xl" />}
-//                 </div>
-//               </div>
-//               <h3 className={`font-bold text-xl ${feedback.correct ? "text-green-700" : "text-red-700"}`}>
-//                 {feedback.correct ? "Excellent!" : "Not Quite Right"}
-//               </h3>
-//               <p className={`text-sm ${feedback.correct ? "text-green-700" : "text-red-700"}`}>
-//                 {feedback.correct ? "You got it right! Great job." : "Learning opportunity ahead!"}
-//               </p>
-//               <button onClick={onClose} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl">
-//                 Continue Learning
-//               </button>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default QuestionModal;
 import { useState, useEffect } from "react";
 import useCountdown from "../../hooks/useCountdown";
 import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import axios from "axios";
+import AnswerFeedback from "./AnswerFeedback";
 
 const QuestionModal = ({ question, onClose, onSubmit }) => {
-  const [selected, setSelected] = useState(null); // لتخزين الإجابة المختارة
-  const [showFeedback, setShowFeedback] = useState(false); // لتحديد متى يظهر الفيدباك
-  const [feedback, setFeedback] = useState(null); // لتخزين الفيدباك
-  const [timeLeft, reset] = useCountdown(120); // عد تنازلي لمدة 120 ثانية
+  const [selected, setSelected] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [correctAnswer, setCorrectAnswer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [timeLeft, reset] = useCountdown(120);
 
   useEffect(() => {
-    reset(); // إعادة تعيين العد التنازلي عند تغيير السؤال
-  }, [question]);
+    const fetchCorrectAnswer = async () => {
+      try {
+        const response = await axios.get(`/api/TrackQuestionOptions/correct/by-question/${question.id}`);
+        if (response.data.success && response.data.data.length > 0) {
+          setCorrectAnswer(response.data.data[0].optionText);
+        } else {
+          setError("Failed to fetch correct answer");
+        }
+      } catch (err) {
+        setError("Error fetching correct answer: " + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  console.log("Question Data:", question);  // تحقق من بيانات السؤال
+    fetchCorrectAnswer();
+    reset();
+  }, [question, reset]);
 
-  const handleSubmit = async () => {
-    const isCorrect = selected === question.correctAnswer; // مقارنة الإجابة المختارة بالإجابة الصحيحة
+  const handleSubmit = () => {
+    const isCorrect = selected === correctAnswer;
     setFeedback({
       correct: isCorrect,
       userAnswer: selected,
-      correctAnswer: question.correctAnswer,
-      explanation: question.explanation,
+      correctAnswer: correctAnswer,
+      explanation: question.explanation || "No explanation provided",
     });
-    setShowFeedback(true); // إظهار الفيدباك بعد تقديم الإجابة
-    onSubmit(isCorrect); // تمرير النتيجة للـ parent component
+    setShowFeedback(true);
+    onSubmit(question.id, isCorrect);
   };
 
-  if (!question) return null; // إذا لم يكن هناك سؤال، لا تعرض شيء
+  if (!question) return null;
+  if (loading) return <p className="text-center text-gray-500">Loading question data...</p>;
+  if (error) return <p className="text-center text-red-500">{error}</p>;
 
-  // إذا كانت هناك اختيارات، قم بعرضها، وإلا عرض رسالة للمستخدم
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 pointer-events-auto">
@@ -128,55 +60,44 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
             <span className="text-xs font-mono text-gray-700">{timeLeft}</span>
           </div>
         </div>
-
         <div className="p-6">
           <div className="mb-4">
             <h4 className="font-bold text-md text-gray-900 mb-1">{question.questionText}</h4>
-            <p className="text-sm text-gray-500">{question.explanation}</p>
+            <p className="text-sm text-gray-500">{question.explanation || "No description available"}</p>
           </div>
-
           {!showFeedback && (
             <div className="space-y-3 mb-6">
               {question.options && question.options.length > 0 ? (
                 question.options.map((opt, idx) => (
-                  <label key={idx} className="flex items-center border rounded-lg px-4 py-3 cursor-pointer text-sm font-medium">
+                  <label
+                    key={idx}
+                    className="flex items-center border rounded-lg px-4 py-3 cursor-pointer text-sm font-medium"
+                  >
                     <input
                       type="radio"
                       name="answer"
                       value={opt.optionText}
-                      onChange={() => setSelected(opt.optionText)} // تحديث القيمة عند اختيار الإجابة
+                      onChange={() => setSelected(opt.optionText)}
                       className="mr-3"
                     />
                     {opt.optionText}
                   </label>
                 ))
               ) : (
-                <p>No options available for this question</p> // رسالة للمستخدم إذا كانت الخيارات غير موجودة
+                <p className="text-gray-500">No options available for this question</p>
               )}
-              <button onClick={handleSubmit} className="w-full flex justify-center items-center gap-2 bg-indigo-600 text-white py-2.5 rounded-xl">
+              <button
+                onClick={handleSubmit}
+                disabled={!selected}
+                className={`w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-white ${
+                  selected ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-400 cursor-not-allowed"
+                }`}
+              >
                 Submit Answer
               </button>
             </div>
           )}
-
-          {showFeedback && (
-            <div className={`rounded-xl px-6 py-8 text-center space-y-5 ${feedback.correct ? "bg-green-50" : "bg-red-50"}`}>
-              <div className="flex justify-center">
-                <div className={`${feedback.correct ? "bg-green-100" : "bg-red-100"} p-3 rounded-full shadow-md`}>
-                  {feedback.correct ? <IoMdCheckmarkCircleOutline className="text-green-600 text-4xl" /> : <MdClose className="text-red-600 text-4xl" />}
-                </div>
-              </div>
-              <h3 className={`font-bold text-xl ${feedback.correct ? "text-green-700" : "text-red-700"}`}>
-                {feedback.correct ? "Excellent!" : "Not Quite Right"}
-              </h3>
-              <p className={`text-sm ${feedback.correct ? "text-green-700" : "text-red-700"}`} >
-                {feedback.correct ? "You got it right! Great job." : "Learning opportunity ahead!"}
-              </p>
-              <button onClick={onClose} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl">
-                Continue Learning
-              </button>
-            </div>
-          )}
+          {showFeedback && <AnswerFeedback feedback={feedback} onClose={onClose} />}
         </div>
       </div>
     </div>
@@ -184,7 +105,3 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
 };
 
 export default QuestionModal;
-
-
-
-

@@ -1,25 +1,24 @@
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
-import useCountdown from "../../../Pages/hooks/useCountdown"; // تأكد إن المسار صحيح
+import useCountdown from "../../../Pages/hooks/useCountdown"; // تأكدي من صحة المسار
 
-const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage }) => {
+const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage, trackId }) => {
   const navigate = useNavigate();
-
-  // ⏱️ تايمر العد التنازلي (600 ثانية = 10 دقايق)
-  const [timeLeft, resetTimer, rawSeconds] = useCountdown(100);
+  const [timeLeft, , rawSeconds] = useCountdown(100);
 
   const BackToTracks = () => {
-    navigate("/track");
+    if (trackId) {
+      navigate(`/track/${trackId}`);
+    } 
   };
 
   return (
     <div className="flex justify-between items-center mb-8">
-      {/* الرجوع */}
       <div className="flex items-center gap-4">
-        <ArrowLeftIcon
+      <button><ArrowLeftIcon
           className="w-5 h-5 text-gray-600 cursor-pointer"
           onClick={BackToTracks}
-        />
+        /></button>  
         <div>
           <h2 className="text-xl font-bold text-gray-900">{trackName}</h2>
           <div className="flex items-center text-sm text-gray-500 gap-2 mt-1">
@@ -33,9 +32,7 @@ const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage
         </div>
       </div>
 
-      {/* الإحصائيات */}
       <div className="flex items-center gap-6">
-        {/* الأسئلة المجاوب عليها */}
         <div className="text-right">
           <p className="text-blue-600 font-bold text-sm">
             {questionsCompleted}/{totalQuestions}
@@ -43,12 +40,11 @@ const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage
           <p className="text-xs text-gray-500">Questions Completed</p>
         </div>
 
-        {/* النسبة */}
         <div className="w-14 h-14 border rounded-full flex items-center justify-center">
           <span className="text-sm font-semibold text-blue-600">{percentage}%</span>
         </div>
 
-        {/* التايمر */}
+
         <div className="text-right">
           <p
             className={`text-sm font-semibold ${
