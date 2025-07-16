@@ -7,6 +7,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(null); // Track which job's dropdown is open
 
   const jobTypeMap = {
     1: "Freelance",
@@ -34,9 +35,9 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     const fetchJobs = async () => {
       const authToken = localStorage.getItem("authToken");
       const userRole = localStorage.getItem("userRole");
-      const companyId = localStorage.getItem("companyId") || localStorage.getItem("userId");
+      const profileId = localStorage.getItem("profileId");
 
-      console.log("Company ID:", companyId, "User Role:", userRole);
+      console.log("Company ID:", profileId, "User Role:", userRole);
 
       if (!authToken || !["Employer", "Company"].includes(userRole)) {
         if (isMounted) {
@@ -46,7 +47,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
         return;
       }
 
-      if (!companyId) {
+      if (!profileId) {
         if (isMounted) {
           setError("Company ID is missing. Please log in again or contact support at support@fit4job.com.");
           navigate("/login");
@@ -56,7 +57,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
 
       try {
         setIsLoading(true);
-        const endpoint = `http://fit4job.runasp.net/api/Jobs/Company/${companyId}?t=${Date.now()}`;
+        const endpoint = `http://fit4job.runasp.net/api/Jobs/Company/${profileId}?t=${Date.now()}`;
         console.log("Fetching jobs from:", endpoint);
         const response = await fetch(endpoint, {
           method: "GET",
@@ -82,7 +83,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
         console.log("Fetched jobs response:", JSON.stringify(result, null, 2));
 
         if (result.success && Array.isArray(result.data)) {
-          const filteredJobs = result.data.filter((job) => String(job.companyId) === String(companyId));
+          const filteredJobs = result.data.filter((job) => String(job.companyId) === String(profileId));
           if (isMounted) setJobs(filteredJobs);
         } else if (result.errorCode === 101 || result.message === "No jobs found for this company.") {
           if (isMounted) setJobs([]);
@@ -111,6 +112,43 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
 
   const handleAddNew = () => {
     navigate("/job-post", { state: { refreshJobs } });
+  };
+
+  const handleEdit = (jobId) => {
+    navigate(`/job-quiz/${jobId}`, { state: { refreshJobs } });
+    setDropdownOpen(null); // Close dropdown after action
+  };
+
+  const handleDelete = async (jobId) => {
+    const confirmed = window.confirm("Are you sure you want to delete this job?");
+    if (!confirmed) return;
+
+    const authToken = localStorage.getItem("authToken");
+    try {
+      const response = await fetch(`http://fit4job.runasp.net/api/Jobs/${jobId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete job");
+      }
+
+      // Refresh jobs after deletion
+      setJobs(jobs.filter((job) => job.id !== jobId));
+      if (refreshJobs) refreshJobs();
+    } catch (err) {
+      setError(`Failed to delete job: ${err.message}. Please try again or contact support at support@fit4job.com.`);
+    } finally {
+      setDropdownOpen(null); // Close dropdown after action
+    }
+  };
+
+  const toggleDropdown = (jobId) => {
+    setDropdownOpen(dropdownOpen === jobId ? null : jobId); // Toggle dropdown for the specific job
   };
 
   return (
@@ -152,11 +190,30 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
                 {job.salaryRange || "Salary not specified"}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 relative">
               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                 Active
               </span>
-              <MoreVertical className="w-4 h-4 text-gray-500 cursor-pointer" />
+              <MoreVertical
+                className="w-4 h-4 text-gray-500 cursor-pointer"
+                onClick={() => toggleDropdown(job.id)}
+              />
+              {dropdownOpen === job.id && (
+                <div className="absolute right-0 top-6 bg-white border rounded-lg shadow-lg z-10">
+                  <button
+                    onClick={() => handleEdit(job.id)}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(job.id)}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}

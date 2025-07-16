@@ -89,6 +89,7 @@ const Login = () => {
         console.log("Raw response data:", data);
         const userId = data.id || data.userId || data.companyId;
         const userRole = data.role || data.userRole || (accountType === "user" ? "JobSeeker" : "Employer");
+        const profileId = data.profileId; // Extract profileId
 
         if (!userId) {
           throw new Error("Invalid response: Missing id or companyId");
@@ -105,7 +106,6 @@ const Login = () => {
         console.log("Login successful:", data);
         localStorage.setItem("userId", userId);
         localStorage.setItem("userRole", finalRole);
-        console.log("Logged User ID:", userId, "Role:", finalRole);
 
         if (rememberMe) {
           if (data.token) localStorage.setItem("authToken", data.token);
@@ -113,8 +113,11 @@ const Login = () => {
           if (data.username) localStorage.setItem("username", data.username);
           if (finalRole === "Employer" || finalRole === "Company") {
             localStorage.setItem("companyId", data.id); // Store id as companyId
+            if (profileId) localStorage.setItem("profileId", profileId); // Store profileId
           }
         }
+
+        console.log("Logged User ID:", userId, "Role:", finalRole, "Profile ID:", profileId);
 
         if (finalRole === "Employer" || finalRole === "Company") {
           navigate("/companydashboard");
@@ -219,7 +222,7 @@ const Login = () => {
                     className="absolute right-3 top-3 text-gray-500"
                     disabled={isLoading}
                   >
-                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size="20"/>}
                   </button>
                 </div>
                 {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password}</p>}

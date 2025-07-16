@@ -19,8 +19,8 @@ export function SidebarLayout({ children }) {
   const navLinks = [
     { icon: LayoutDashboard, label: "Dashboard", to: "/" },
     { icon: Building, label: "Company Profile", to: "/company-profile" },
-    { icon: Briefcase, label: "Add Job", to: "/create-job" },
-    { icon: FileText, label: "Add Exam", to: "/job-quiz" },
+    { icon: Briefcase, label: "Add Job", to: "/job-quiz/0" },
+    { icon: FileText, label: "Add Exam", to: "/job-quiz/0" },
     { icon: CheckSquare, label: "Add Task", to: "/task" },
     { icon: Users, label: "View Responses", to: "/responses" },
   ];

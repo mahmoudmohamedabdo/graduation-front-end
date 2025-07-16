@@ -37,8 +37,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/companydashboard" element={<CompanyDashboard />} />
           <Route path="/company-profile" element={<CompanyProfile />} />
-          <Route path="/job-quiz" element={<JobPostForm />} />
-          <Route path="/create-job" element={<JobPostForm />} />
+          <Route path="/job-quiz/:id" element={<JobPostForm />} />
           <Route path="/quiz" element={<JobQuizPage />} />
           <Route path="/verify" element={<VerifyCode />} />
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
@@ -58,4 +57,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;
