@@ -101,6 +101,8 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
     reset(); // إعادة تعيين العد التنازلي عند تغيير السؤال
   }, [question]);
 
+  console.log("Question Data:", question);  // تحقق من بيانات السؤال
+
   const handleSubmit = async () => {
     const isCorrect = selected === question.correctAnswer; // مقارنة الإجابة المختارة بالإجابة الصحيحة
     setFeedback({
@@ -115,6 +117,7 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
 
   if (!question) return null; // إذا لم يكن هناك سؤال، لا تعرض شيء
 
+  // إذا كانت هناك اختيارات، قم بعرضها، وإلا عرض رسالة للمستخدم
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 pointer-events-auto">
@@ -166,7 +169,7 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
               <h3 className={`font-bold text-xl ${feedback.correct ? "text-green-700" : "text-red-700"}`}>
                 {feedback.correct ? "Excellent!" : "Not Quite Right"}
               </h3>
-              <p className={`text-sm ${feedback.correct ? "text-green-700" : "text-red-700"}`}>
+              <p className={`text-sm ${feedback.correct ? "text-green-700" : "text-red-700"}`} >
                 {feedback.correct ? "You got it right! Great job." : "Learning opportunity ahead!"}
               </p>
               <button onClick={onClose} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl">
@@ -181,3 +184,7 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
 };
 
 export default QuestionModal;
+
+
+
+
