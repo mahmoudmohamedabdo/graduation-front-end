@@ -21,6 +21,7 @@ import "./app.css";
 import "./index.css";
 import Login from "./Components/login";
 import Signup from "./Components/SignUp";
+import TrackManager from "./Components/Admin Dashboard/TrackManager";
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -40,6 +41,8 @@ function App() {
           <Route path="/job-quiz/:id" element={<JobPostForm />} />
           <Route path="/quiz" element={<JobQuizPage />} />
           <Route path="/verify" element={<VerifyCode />} />
+          <Route path="/trackManager" element={<TrackManager/>} />
+
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
           <Route path="/myLearning" element={<ProtectedRoute><MyLearning /></ProtectedRoute>} />
