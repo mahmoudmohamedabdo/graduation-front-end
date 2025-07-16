@@ -22,7 +22,7 @@ export function SidebarLayout({ children }) {
     { icon: Briefcase, label: "Add Job", to: "/job-quiz/0" },
     { icon: FileText, label: "Add Exam", to: "/job-quiz/0" },
     { icon: CheckSquare, label: "Add Task", to: "/task" },
-    { icon: Users, label: "View Responses", to: "/ResponsesView" },
+    { icon: Users, label: "View Responses", to: "/ResponsesView" }
   ];
 
   return (

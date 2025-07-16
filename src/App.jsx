@@ -17,6 +17,8 @@ import VerifyCode from './Components/VerifyCode'
 import CompanyDashboard from "./Components/CompanyDashboardMain/Dashboard/CompanyDashboard";
 import JobPostForm from "./Components/CompanyDashboardMain/JobPostForm";
 import CompanyProfile from "./Components/CompanyDashboardMain/CompanyProfile";
+// import ResponsesView from "./Components/CompanyDashboardMain/ResponsesView";
+
 import "./app.css";
 import "./index.css";
 import Login from "./Components/login";
@@ -42,6 +44,9 @@ function App() {
           <Route path="/quiz" element={<JobQuizPage />} />
           <Route path="/verify" element={<VerifyCode />} />
           <Route path="/trackManager" element={<TrackManager/>} />
+
+          {/* <Route path="/ResponsesView" element={<ProtectedRoute><ResponsesView /></ProtectedRoute>} /> */}
+        
 
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
