@@ -248,7 +248,6 @@ export default function JobPostForm({ refreshJobs }) {
                 } else {
                     const deadlineDate = new Date(value);
                     const now = new Date();
-                    // Set deadline to at least one hour in the future to account for server time differences
                     now.setHours(now.getHours() + 1);
                     if (deadlineDate <= now) {
                         fieldErrors.deadline = "Task Deadline must be at least one hour in the future";
@@ -331,7 +330,7 @@ export default function JobPostForm({ refreshJobs }) {
         if (!taskData.requirements.trim()) {
             fieldErrors.requirements = "Task Requirements is required";
         } else if (taskData.requirements.trim().length < 10 || taskData.requirements.trim().length > 2000) {
-            fieldErrors.requirements = "Task Requirements must be between  Emiliano10 and 2,000 characters";
+            fieldErrors.requirements = "Task Requirements must be between 10 and 2,000 characters";
         }
 
         if (!taskData.deliverables.trim()) {
@@ -495,7 +494,6 @@ export default function JobPostForm({ refreshJobs }) {
                     const errorData = await response.json();
                     console.error("Task API Error Details:", JSON.stringify(errorData, null, 2));
                     const errorMessage = errorData.message || `Failed to create task: ${response.statusText}`;
-                    // Map server-side validation errors to client-side error state
                     if (errorData.errors) {
                         const fieldErrors = {};
                         Object.keys(errorData.errors).forEach((key) => {
@@ -522,6 +520,9 @@ export default function JobPostForm({ refreshJobs }) {
                         estimatedHours: "",
                     });
                     setShowTaskForm(false);
+                    if (refreshJobs) {
+                        refreshJobs(); // Trigger refresh after task creation
+                    }
                     navigate("/companydashboard");
                 } else {
                     throw new Error(result.message || "Unknown error during task creation");

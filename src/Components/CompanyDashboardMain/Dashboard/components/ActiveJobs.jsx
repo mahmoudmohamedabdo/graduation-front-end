@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MoreVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import EditTaskModal from "../../EditTaskModal";
 
 export default function ActiveJobs({ refreshKey, refreshJobs }) {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   const [error, setError] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(null);
   const [taskDropdownOpen, setTaskDropdownOpen] = useState(null);
+  const [editTaskData, setEditTaskData] = useState(null);
   const dropdownRef = useRef(null);
   const taskDropdownRef = useRef(null);
 
@@ -86,16 +88,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
           },
         });
 
-        if (!response.ok) {
-          const text = await response.text();
-          let result;
-          try {
-            result = JSON.parse(text);
-            throw new Error(result.message || `Failed to fetch jobs`);
-          } catch {
-            throw new Error(`Failed to fetch jobs`);
-          }
-        }
+        if (!response.ok) throw new Error("Failed to fetch jobs");
 
         const result = await response.json();
 
@@ -103,52 +96,49 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
           const filteredJobs = result.data.filter((job) => String(job.companyId) === String(profileId));
           const jobsWithTasks = await Promise.all(
             filteredJobs.map(async (job) => {
+              let task = null;
+              let hasTasks = false;
+
               try {
-                const taskEndpoint = `http://fit4job.runasp.net/api/CompanyTasks/${job.id}`;
-                const taskResponse = await fetch(taskEndpoint, {
-                  method: "GET",
-                  headers: {
-                    Authorization: `Bearer ${authToken}`,
-                    "Content-Type": "application/json",
-                  },
-                });
-
-                if (!taskResponse.ok) {
-                  if (taskResponse.status === 404) {
-                    return { ...job, hasTasks: false, tasks: [] };
+                const taskResponse = await fetch(
+                  `http://fit4job.runasp.net/api/CompanyTasks/job/${job.id}`,
+                  {
+                    method: "GET",
+                    headers: {
+                      Authorization: `Bearer ${authToken}`,
+                      "Content-Type": "application/json",
+                      accept: "text/plain",
+                    },
                   }
-                  throw new Error(`Failed to fetch tasks`);
+                );
+
+                if (taskResponse.ok) {
+                  const taskResult = await taskResponse.json();
+                  if (taskResult.success && taskResult.data) {
+                    task = taskResult.data;
+                    hasTasks = true;
+                  }
                 }
-
-                const taskResult = await taskResponse.json();
-                const tasks = taskResult.success && taskResult.data
-                  ? Array.isArray(taskResult.data)
-                    ? taskResult.data
-                    : [taskResult.data]
-                  : [];
-
-                return {
-                  ...job,
-                  hasTasks: taskResult.success && tasks.length > 0,
-                  tasks,
-                };
-              } catch {
-                return { ...job, hasTasks: false, tasks: [] };
+              } catch (err) {
+                console.error(`Error fetching task for job ${job.id}:`, err);
               }
+
+              return {
+                ...job,
+                hasTasks,
+                task,
+              };
             })
           );
+
           if (isMounted) {
             setJobs(jobsWithTasks);
           }
-        } else if (result.message === "No jobs found for this company.") {
-          if (isMounted) setJobs([]);
         } else {
-          throw new Error(result.message || "Invalid response format");
+          throw new Error(result.message || "No jobs found");
         }
       } catch (err) {
-        if (isMounted) {
-          setError(`Failed to fetch jobs: ${err.message}`);
-        }
+        if (isMounted) setError(`Failed to fetch jobs: ${err.message}`);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -160,12 +150,10 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     };
   }, [navigate, refreshKey]);
 
-  const handleAddNew = () => {
-    navigate("/job-quiz/0");
-  };
+  const handleAddNew = () => navigate("/job-quiz/0");
 
   const handleEdit = (jobId) => {
-    navigate(`/job-quiz/${jobId}`); // ✅ Removed state
+    navigate(`/job-quiz/${jobId}`);
     setDropdownOpen(null);
   };
 
@@ -183,9 +171,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
         },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to delete job");
-      }
+      if (!response.ok) throw new Error("Failed to delete job");
 
       setJobs(jobs.filter((job) => job.id !== jobId));
       if (refreshJobs) refreshJobs();
@@ -197,7 +183,10 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   };
 
   const handleEditTask = (jobId, taskId) => {
-    navigate(`/job/${jobId}/tasks/edit/${taskId}`);
+    const job = jobs.find((j) => j.id === jobId);
+    if (job && job.task) {
+      setEditTaskData({ jobId, task: job.task });
+    }
     setTaskDropdownOpen(null);
   };
 
@@ -211,23 +200,15 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${authToken}`,
-          "Content-Type": "application/json",
+          accept: "text/plain",
         },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to delete task");
-      }
+      if (!response.ok) throw new Error("Failed to delete task");
 
-      setJobs(
-        jobs.map((job) =>
-          job.id === jobId
-            ? {
-                ...job,
-                tasks: job.tasks.filter((task) => task.id !== taskId),
-                hasTasks: job.tasks.length > 1,
-              }
-            : job
+      setJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job.id === jobId ? { ...job, task: null, hasTasks: false } : job
         )
       );
       if (refreshJobs) refreshJobs();
@@ -238,10 +219,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     }
   };
 
-  const handleViewTask = (jobId, taskId) => {
-    navigate(`/job/${jobId}/tasks/${taskId}`);
-    setTaskDropdownOpen(null);
-  };
 
   const toggleDropdown = (jobId) => {
     setDropdownOpen(dropdownOpen === jobId ? null : jobId);
@@ -253,118 +230,227 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     setDropdownOpen(null);
   };
 
+  const handleTaskModalClose = () => setEditTaskData(null);
+
+  const handleTaskModalSave = async (updatedTask) => {
+    const authToken = localStorage.getItem("authToken");
+    try {
+      const response = await fetch(`http://fit4job.runasp.net/api/CompanyTasks/${updatedTask.id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          accept: "text/plain",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedTask),
+      });
+
+      if (!response.ok) throw new Error("Failed to update task");
+
+      setJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job.id === editTaskData.jobId
+            ? { ...job, task: updatedTask, hasTasks: true }
+            : job
+        )
+      );
+      alert("Task edited successfully!");
+      setEditTaskData(null);
+      if (refreshJobs) refreshJobs();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow p-5 mt-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Active Jobs</h3>
-        <button
-          onClick={handleAddNew}
-          className="text-blue-600 text-sm font-medium hover:underline"
-        >
-          Add New
-        </button>
-      </div>
-
-      {isLoading && <p className="text-gray-500">Loading jobs...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {!isLoading && !error && jobs.length === 0 && (
-        <p className="text-gray-500">
-          No active jobs found.{" "}
-          <button onClick={handleAddNew} className="text-blue-600 hover:underline">
-            Post a new job
-          </button>
-          .
-        </p>
-      )}
-
-      <div className="space-y-4">
-        {jobs.map((job) => (
-          <div
-            key={job.id}
-            className="border rounded-lg px-4 py-3 flex justify-between items-center hover:shadow-sm"
+    <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
+      <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-2xl font-bold text-gray-900">Active Jobs</h2>
+          <button
+            onClick={handleAddNew}
+            className="text-blue-600 text-base font-semibold hover:underline transition-colors"
           >
-            <div>
-              <h4 className="font-medium text-gray-800">{job.title}</h4>
-              <p className="text-sm text-gray-500">
-                {jobTypeMap[job.jobType] || "Unknown Job Type"} •{" "}
-                {locationTypeMap[job.workLocationType] || "Unknown Location"} •{" "}
-                {educationLevelMap[job.educationLevel] || "Education not specified"} •{" "}
-                {job.salaryRange || "Salary not specified"}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 relative">
-              {job.hasTasks ? (
-                <span
-                  className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full cursor-pointer"
-                  title="Click to manage tasks"
-                  onClick={() => toggleTaskDropdown(job.id)}
-                >
-                  Contains Tasks
-                </span>
-              ) : (
-                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                  No Tasks
-                </span>
-              )}
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                Active
-              </span>
-              <MoreVertical
-                className="w-4 h-4 text-gray-500 cursor-pointer"
-                onClick={() => toggleDropdown(job.id)}
-              />
-              {dropdownOpen === job.id && (
-                <div
-                  ref={dropdownRef}
-                  className="absolute right-0 top-6 bg-white border rounded-lg shadow-lg z-10"
-                >
-                  <button
-                    onClick={() => handleEdit(job.id)}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Edit Job
-                  </button>
-                  <button
-                    onClick={() => handleDelete(job.id)}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                  >
-                    Delete Job
-                  </button>
+            Add New
+          </button>
+        </div>
+
+        {isLoading && <p className="text-gray-500 text-center text-lg">Loading jobs...</p>}
+        {error && <p className="text-red-500 text-center text-lg">{error}</p>}
+        {!isLoading && !error && jobs.length === 0 && (
+          <p className="text-gray-500 text-center text-lg">
+            No active jobs found.{" "}
+            <button onClick={handleAddNew} className="text-blue-600 hover:underline">
+              Post a new job
+            </button>
+            .
+          </p>
+        )}
+
+        {!isLoading && !error && jobs.length > 0 && (
+          <div className="space-y-8">
+            {/* Jobs with Tasks Section */}
+            {jobs.some((job) => job.hasTasks) && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-gray-800 mb-6 border-b pb-2">Jobs with Tasks</h3>
+                <div className="space-y-6">
+                  {jobs
+                    .filter((job) => job.hasTasks)
+                    .map((job) => (
+                      <div
+                        key={job.id}
+                        className="border border-gray-200 rounded-xl p-5 flex justify-between items-start hover:shadow-xl transition-shadow duration-300 bg-white"
+                      >
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-900">{job.title}</h4>
+                          <p className="text-sm text-gray-600 mt-2">
+                            {jobTypeMap[job.jobType] || "Unknown Job Type"} •{" "}
+                            {locationTypeMap[job.workLocationType] || "Unknown Location"} •{" "}
+                            {educationLevelMap[job.educationLevel] || "Education not specified"} •{" "}
+                            {job.salaryRange || "Salary not specified"}
+                          </p>
+                          {job.task && (
+                            <div className="mt-4 text-sm text-gray-700">
+                              <strong className="font-medium">Task Details:</strong>
+                              <p className="mt-1"><span className="font-semibold">Title:</span> {job.task.title}</p>
+                              <p className="mt-1"><span className="font-semibold">Deadline:</span> {new Date(job.task.deadline).toLocaleDateString()}</p>
+                              <p className="mt-1"><span className="font-semibold">Estimated Hours:</span> {job.task.estimatedHours}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 relative">
+                          <span
+                            className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full cursor-pointer hover:bg-green-200 transition-colors"
+                            title="Click to manage task"
+                            onClick={() => toggleTaskDropdown(job.id)}
+                          >
+                            Contains Task
+                          </span>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                            Active
+                          </span>
+                          <MoreVertical
+                            className="w-5 h-5 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
+                            onClick={() => toggleDropdown(job.id)}
+                          />
+                          {dropdownOpen === job.id && (
+                            <div
+                              ref={dropdownRef}
+                              className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-40"
+                            >
+                              <button
+                                onClick={() => handleEdit(job.id)}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                              >
+                                Edit Job
+                              </button>
+                              <button
+                                onClick={() => handleDelete(job.id)}
+                                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
+                              >
+                                Delete Job
+                              </button>
+                            </div>
+                          )}
+                          {taskDropdownOpen === job.id && job.hasTasks && job.task && (
+                            <div
+                              ref={taskDropdownRef}
+                              className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-40"
+                            >
+                              <button
+                                onClick={() => handleEditTask(job.id, job.task.id)}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                              >
+                                Edit Task: {job.task.title}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(job.id, job.task.id)}
+                                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
+                              >
+                                Delete Task: {job.task.title}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                 </div>
-              )}
-              {taskDropdownOpen === job.id && job.hasTasks && (
-                <div
-                  ref={taskDropdownRef}
-                  className="absolute right-0 top-6 bg-white border rounded-lg shadow-lg z-10"
-                >
-                  {job.tasks.map((task) => (
-                    <div key={task.id}>
-                      <button
-                        onClick={() => handleEditTask(job.id, task.id)}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              </div>
+            )}
+
+            {/* Jobs without Tasks Section */}
+            {jobs.some((job) => !job.hasTasks) && (
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-6 border-b pb-2">Jobs without Tasks</h3>
+                <div className="space-y-6">
+                  {jobs
+                    .filter((job) => !job.hasTasks)
+                    .map((job) => (
+                      <div
+                        key={job.id}
+                        className="border border-gray-200 rounded-xl p-5 flex justify-between items-start hover:shadow-xl transition-shadow duration-300 bg-white"
                       >
-                        Edit Task: {task.title}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(job.id, task.id)}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      >
-                        Delete Task: {task.title}
-                      </button>
-                      <button
-                        onClick={() => handleViewTask(job.id, task.id)}
-                        className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
-                      >
-                        View Task: {task.title}
-                      </button>
-                    </div>
-                  ))}
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-900">{job.title}</h4>
+                          <p className="text-sm text-gray-600 mt-2">
+                            {jobTypeMap[job.jobType] || "Unknown Job Type"} •{" "}
+                            {locationTypeMap[job.workLocationType] || "Unknown Location"} •{" "}
+                            {educationLevelMap[job.educationLevel] || "Education not specified"} •{" "}
+                            {job.salaryRange || "Salary not specified"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4 relative">
+                          <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
+                            No Task
+                          </span>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                            Active
+                          </span>
+                          <MoreVertical
+                            className="w-5 h-5 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
+                            onClick={() => toggleDropdown(job.id)}
+                          />
+                          {dropdownOpen === job.id && (
+                            <div
+                              ref={dropdownRef}
+                              className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-40"
+                            >
+                              <button
+                                onClick={() => handleEdit(job.id)}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                              >
+                                Edit Job
+                              </button>
+                              <button
+                                onClick={() => handleDelete(job.id)}
+                                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
+                              >
+                                Delete Job
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+        )}
+        {editTaskData && (
+          <EditTaskModal
+            task={editTaskData.task}
+            onClose={handleTaskModalClose}
+            onSave={handleTaskModalSave}
+          />
+        )}
+      </div>      {editTaskData && (
+        <EditTaskModal
+          task={editTaskData.task}
+          onClose={handleTaskModalClose}
+          onSave={handleTaskModalSave}
+        />
+      )}
     </div>
   );
 }

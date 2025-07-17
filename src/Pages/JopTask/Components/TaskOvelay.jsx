@@ -1,29 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-export default function TaskOverlay({ isClose, isOpen }) {
+export default function TaskOverlay({ isClose, isOpen, task, userId, jobApplicationId }) {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [submission, setSubmission] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleTextareaChange = (e) => {
     setSubmission(e.target.value);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!submission.trim()) return;
 
-    console.log('Submission:', submission);
-    setHasSubmitted(true);
-    isClose();
+    const payload = {
+      taskId: task.id,
+      userId,
+      jobApplicationId,
+      submissionNotes: submission,
+      submissionLink: submission, // لنفترض أنه نفس الرابط، يمكنك تخصيص حقل آخر إذا أردت
+      demoLink: "" // فارغ مؤقتًا
+    };
+
+    try {
+      setLoading(true);
+      const res = await axios.post('http://fit4job.runasp.net/api/UserSubmissions', payload);
+      if (res.data.success) {
+        console.log('✅ Submission created:', res.data.data);
+        setHasSubmitted(true);
+        isClose();
+      } else {
+        console.error('❌ Submission failed:', res.data.message);
+      }
+    } catch (err) {
+      console.error('❌ API Error:', err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      setSubmission('');
+      setHasSubmitted(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !task) return null;
 
   return (
-    <div  className="fixed inset-0 flex justify-center items-center z-50 p-4"
-  style={{ backgroundColor: 'rgba(156, 163, 175, 0.3)' }}
+    <div
+      className="fixed inset-0 flex justify-center items-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(156, 163, 175, 0.3)' }}
     >
       <div className="bg-white shadow-xl rounded-xl max-w-3xl w-full mx-4 p-6 relative overflow-y-auto max-h-[90vh] border border-gray-200">
-        {/* زر الإغلاق */}
+        {/* Close Button */}
         <button
           onClick={isClose}
           className="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-2xl"
@@ -31,26 +62,32 @@ export default function TaskOverlay({ isClose, isOpen }) {
           ✕
         </button>
 
-        {/* محتوى الـ Modal */}
+        {/* Modal Content */}
         <div>
           <div className="mb-6">
-            <span className="text-xl font-semibold text-gray-900 block mb-1">Build a React Todo App</span>
-            <span className="text-sm text-gray-500">Deadline: 7/3/2025</span>
+            <span className="text-xl font-semibold text-gray-900 block mb-1">{task.title}</span>
+            <span className="text-sm text-gray-500">
+              Deadline: {new Date(task.deadline).toLocaleDateString()}
+            </span>
           </div>
 
           <div className="mb-5">
             <h3 className="text-lg font-semibold mb-2">Task Description</h3>
-            <p className="text-gray-700 mb-4">
-              Create a simple todo application using React with the ability to add, edit, and delete tasks.
-            </p>
+            <p className="text-gray-700 mb-4">{task.description}</p>
+
             <h4 className="font-semibold text-gray-800 mb-2">Requirements:</h4>
             <ul className="list-disc list-inside text-gray-700 space-y-1 pl-2 text-sm">
-              <li>Use React hooks for state management</li>
-              <li>Implement CRUD operations for todos</li>
-              <li>Style the application using CSS or a UI library</li>
-              <li>Include form validation</li>
-              <li>Implement local storage to persist todos</li>
+              {task.requirements.split('\n').map((req, idx) => (
+                <li key={idx}>{req}</li>
+              ))}
             </ul>
+
+            {task.deliverables && (
+              <>
+                <h4 className="font-semibold text-gray-800 mt-4 mb-2">Deliverables:</h4>
+                <p className="text-gray-700 text-sm">{task.deliverables}</p>
+              </>
+            )}
           </div>
 
           <div>
@@ -69,11 +106,11 @@ export default function TaskOverlay({ isClose, isOpen }) {
 
           <div className="flex justify-end mt-4">
             <button
-              className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-2 transition"
+              className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-2 transition disabled:opacity-50"
               onClick={handleSubmit}
-              disabled={!submission.trim()}
+              disabled={!submission.trim() || loading}
             >
-              {hasSubmitted ? 'Update Submission' : 'Submit'}
+              {loading ? 'Submitting...' : hasSubmitted ? 'Update Submission' : 'Submit'}
             </button>
           </div>
         </div>
