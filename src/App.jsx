@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-
+import AddExamForm from "./Components/CompanyDashboardMain/AddExamForm";
 import LandingPage from './Pages/landingpage/LandingPage';
 import HomePage from './Pages/HomePage/HomePage';
 import Level from "./Pages/Level/Level";
@@ -42,7 +42,7 @@ function App() {
           <Route path="/quiz" element={<JobQuizPage />} />
           <Route path="/verify" element={<VerifyCode />} />
           <Route path="/trackManager" element={<TrackManager/>} />
-
+           <Route path="/add-exam/:jobId" element={<AddExamForm />} />
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
           <Route path="/myLearning" element={<ProtectedRoute><MyLearning /></ProtectedRoute>} />
@@ -51,7 +51,7 @@ function App() {
           <Route path="/track/:id" element={<ProtectedRoute><Track /></ProtectedRoute>} />
           <Route path="/jops" element={<ProtectedRoute><Jops /></ProtectedRoute>} />
           <Route path="/jopDetails/:id" element={<ProtectedRoute><JopDetails /></ProtectedRoute>} />
-          <Route path="/jopTask" element={<ProtectedRoute><JopTask /></ProtectedRoute>} />
+          <Route path="/jopTask/:id" element={<ProtectedRoute><JopTask /></ProtectedRoute>} />
 
         </Routes>
 

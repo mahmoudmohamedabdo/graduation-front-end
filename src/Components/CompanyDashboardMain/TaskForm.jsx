@@ -7,10 +7,10 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(null); // Track job dropdown
-  const [taskDropdownOpen, setTaskDropdownOpen] = useState(null); // Track task dropdown
-  const dropdownRef = useRef(null); // Ref for job dropdown
-  const taskDropdownRef = useRef(null); // Ref for task dropdown
+  const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [taskDropdownOpen, setTaskDropdownOpen] = useState(null);
+  const dropdownRef = useRef(null);
+  const taskDropdownRef = useRef(null);
 
   const jobTypeMap = {
     1: "Freelance",
@@ -53,6 +53,54 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     };
   }, []);
 
+  // Function to fetch tasks with retry mechanism
+  const fetchTasksForJob = async (jobId, authToken, retries = 3, delay = 2000) => {
+    const taskEndpoint = `http://fit4job.runasp.net/api/CompanyTasks/${jobId}`;
+    console.log(`Fetching tasks for job ${jobId} from:`, taskEndpoint);
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const taskResponse = await fetch(taskEndpoint, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        console.log(`Task API response status for job ${jobId} (attempt ${attempt}):`, taskResponse.status);
+        if (!taskResponse.ok) {
+          if (taskResponse.status === 404) {
+            console.log(`No tasks found for job ${jobId}: ${taskResponse.statusText}`);
+            return { hasTasks: false, taskId: null };
+          }
+          throw new Error(`Failed to fetch tasks: ${taskResponse.statusText}`);
+        }
+
+        const taskResult = await taskResponse.json();
+        console.log(`Tasks for job ${jobId} (attempt ${attempt}):`, JSON.stringify(taskResult, null, 2));
+
+        // Handle both object and array responses
+        const hasTasks = taskResult.success && (
+          (Array.isArray(taskResult.data) && taskResult.data.length > 0) ||
+          (taskResult.data && typeof taskResult.data === 'object' && Object.keys(taskResult.data).length > 0)
+        );
+        const taskId = hasTasks && Array.isArray(taskResult.data) && taskResult.data[0] ? taskResult.data[0].id : 
+                       hasTasks && taskResult.data && taskResult.data.id ? taskResult.data.id : null;
+
+        return { hasTasks, taskId };
+      } catch (err) {
+        console.warn(`Error fetching tasks for job ${jobId} (attempt ${attempt}): ${err.message}`);
+        if (attempt < retries) {
+          console.log(`Retrying task fetch for job ${jobId} after ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          return { hasTasks: false, taskId: null };
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     const fetchJobs = async () => {
@@ -60,7 +108,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
       const userRole = localStorage.getItem("userRole");
       const profileId = localStorage.getItem("profileId");
 
-      console.log("Company ID:", profileId, "User Role:", userRole);
+      console.log("Company ID:", profileId, "User Role:", userRole, "Refresh Key:", refreshKey);
 
       if (!authToken || !["Employer", "Company"].includes(userRole)) {
         if (isMounted) {
@@ -110,34 +158,8 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
           // Fetch tasks for each job
           const jobsWithTasks = await Promise.all(
             filteredJobs.map(async (job) => {
-              try {
-                const taskEndpoint = `http://fit4job.runasp.net/api/CompanyTasks/${job.id}`;
-                console.log(`Fetching tasks for job ${job.id} from:`, taskEndpoint);
-                const taskResponse = await fetch(taskEndpoint, {
-                  method: "GET",
-                  headers: {
-                    Authorization: `Bearer ${authToken}`,
-                    "Content-Type": "application/json",
-                  },
-                });
-                if (!taskResponse.ok) {
-                  if (taskResponse.status === 404) {
-                    console.log(`No tasks found for job ${job.id}: ${taskResponse.statusText}`);
-                    return { ...job, hasTasks: false, tasks: [] };
-                  }
-                  throw new Error(`Failed to fetch tasks: ${taskResponse.statusText}`);
-                }
-                const taskResult = await taskResponse.json();
-                console.log(`Tasks for job ${job.id}:`, JSON.stringify(taskResult, null, 2));
-                return {
-                  ...job,
-                  hasTasks: taskResult.success && taskResult.data && taskResult.data.length > 0,
-                  tasks: taskResult.success && taskResult.data ? taskResult.data : [],
-                };
-              } catch (err) {
-                console.warn(`Error fetching tasks for job ${job.id}: ${err.message}`);
-                return { ...job, hasTasks: false, tasks: [] };
-              }
+              const { hasTasks, taskId } = await fetchTasksForJob(job.id, authToken);
+              return { ...job, hasTasks, taskId };
             })
           );
           if (isMounted) setJobs(jobsWithTasks);
@@ -225,19 +247,9 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
         throw new Error("Failed to delete task");
       }
 
-      // Update job tasks and hasTasks status
-      setJobs(
-        jobs.map((job) =>
-          job.id === jobId
-            ? {
-                ...job,
-                tasks: job.tasks.filter((task) => task.id !== taskId),
-                hasTasks: job.tasks.length > 1, // Still has tasks if more than one remains
-              }
-            : job
-        )
-      );
+      // Refresh jobs to update task status
       if (refreshJobs) refreshJobs();
+      setJobs(jobs.map((job) => (job.id === jobId ? { ...job, hasTasks: false, taskId: null } : job)));
     } catch (err) {
       setError(`Failed to delete task: ${err.message}. Please try again or contact support at support@fit4job.com.`);
     } finally {
@@ -251,25 +263,40 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   };
 
   const toggleDropdown = (jobId) => {
+    console.log("toggleDropdown called for jobId:", jobId);
     setDropdownOpen(dropdownOpen === jobId ? null : jobId);
-    setTaskDropdownOpen(null); // Close task dropdown if job dropdown is toggled
+    setTaskDropdownOpen(null);
   };
 
   const toggleTaskDropdown = (jobId) => {
+    console.log("toggleTaskDropdown called for jobId:", jobId);
     setTaskDropdownOpen(taskDropdownOpen === jobId ? null : jobId);
-    setDropdownOpen(null); // Close job dropdown if task dropdown is toggled
+    setDropdownOpen(null);
+  };
+
+  const handleRefresh = () => {
+    console.log("Manual refresh triggered");
+    if (refreshJobs) refreshJobs();
   };
 
   return (
     <div className="bg-white rounded-xl shadow p-5 mt-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Active Jobs</h3>
-        <button
-          onClick={handleAddNew}
-          className="text-blue-600 text-sm font-medium hover:underline"
-        >
-          Add New
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleAddNew}
+            className="text-blue-600 text-sm font-medium hover:underline"
+          >
+            Add New
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="text-blue-600 text-sm font-medium hover:underline"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {isLoading && <p className="text-gray-500">Loading jobs...</p>}
@@ -280,7 +307,11 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
           <button onClick={handleAddNew} className="text-blue-600 hover:underline">
             Post a new job
           </button>{" "}
-          or verify your account settings if you recently added a job.
+          or click{" "}
+          <button onClick={handleRefresh} className="text-blue-600 hover:underline">
+            Refresh
+          </button>{" "}
+          to check for recent updates.
         </p>
       )}
 
@@ -340,28 +371,24 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
                   ref={taskDropdownRef}
                   className="absolute right-0 top-6 bg-white border rounded-lg shadow-lg z-10"
                 >
-                  {job.tasks.map((task) => (
-                    <div key={task.id}>
-                      <button
-                        onClick={() => handleEditTask(job.id, task.id)}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Edit Task: {task.title}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(job.id, task.id)}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      >
-                        Delete Task: {task.title}
-                      </button>
-                      <button
-                        onClick={() => handleViewTask(job.id, task.id)}
-                        className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
-                      >
-                        View Task: {task.title}
-                      </button>
-                    </div>
-                  ))}
+                  <button
+                    onClick={() => handleEditTask(job.id, job.taskId)}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Edit Task
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTask(job.id, job.taskId)}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  >
+                    Delete Task
+                  </button>
+                  <button
+                    onClick={() => handleViewTask(job.id, job.taskId)}
+                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
+                  >
+                    View Task
+                  </button>
                 </div>
               )}
             </div>

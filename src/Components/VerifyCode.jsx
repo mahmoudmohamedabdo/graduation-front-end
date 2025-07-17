@@ -31,7 +31,7 @@ export default function VerifyCode() {
     }
 
     try {
-      const verifyEndpoint = "http://fit4job.runasp.net/api/Authentication/Verification";
+      const verifyEndpoint = 'http://fit4job.runasp.net/api/Authentication/Verification';
       const verifyPayload = {
         emailOrUsername,
         verificationCode: code.trim(),

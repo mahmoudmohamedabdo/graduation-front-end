@@ -13,13 +13,13 @@ export default function JopNav({ id }) {
                 Details
             </NavLink>
             <NavLink
-                to={`/quiz`}
+                to={`/quiz//${id}`}
                 className={({ isActive }) => isActive ? `${baseClass} ${activeClass}` : baseClass}
             >
                 Quiz
             </NavLink>
             <NavLink
-                to={`/jopTask`}
+                to={`/jopTask//${id}`}
                 className={({ isActive }) => isActive ? `${baseClass} ${activeClass}` : baseClass}
             >
                 Task

@@ -16,6 +16,7 @@ export default function CompanyDashboard() {
   return (
     <SidebarLayout>
       <div className="my-10 mx-5">
+        {/* ActionButtons should pass refreshJobs to JobPostForm via navigation state */}
         <ActionButtons refreshJobs={refreshJobs} />
         <h2 className="text-lg font-medium mb-4">Overview</h2>
         <OverviewCards />
@@ -23,8 +24,8 @@ export default function CompanyDashboard() {
           <RecentActivity />
           <TopPerformingJobs />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <ActiveJobs refreshKey={refreshKey} />
+        <div className="grid grid-cols-1 gap-4 mt-4">
+          <ActiveJobs refreshKey={refreshKey} refreshJobs={refreshJobs} />
         </div>
       </div>
     </SidebarLayout>
