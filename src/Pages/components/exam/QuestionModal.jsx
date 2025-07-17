@@ -68,7 +68,7 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
     let isCorrect = false;
 
 
-
+      ///DFGHJKL
     // Determine the type of question and process accordingly
     if (question.questionType === 0 || question.questionType === 5) {
       submissionData.selectedOptions = [selected]; // Single choice or True/False

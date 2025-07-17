@@ -4,14 +4,15 @@ import { IoMdCheckmarkCircle } from "react-icons/io";
 import { LuRefreshCcw } from "react-icons/lu";
 import axios from "axios";
 import AnswerFeedback from "./AnswerFeedback";
-
+import { useParams } from "react-router-dom";
 
 const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({}); // تخزين الإجابات المختارة لكل سؤال
   const [feedbacks, setFeedbacks] = useState({}); // تخزين الفيدباك لكل سؤال
   const [loading, setLoading] = useState({}); // حالة التحميل لكل سؤال
   const [errors, setErrors] = useState({}); // حالة الخطأ لكل سؤال
-
+  const { id: trackId } = useParams();
+  // const attemptId = localStorage.getItem(`attemptId_${trackId}`);
 
   const getStatus = (questionId) => {
     const q = completed.find((c) => c.id === questionId);
@@ -27,37 +28,119 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
 
 
   const handleAnswerSubmit = async (questionId) => {
-    if (!selectedAnswers[questionId]) return; // لا يتم الإرسال إذا لم يتم اختيار إجابة
+    if (!selectedAnswers[questionId]) {
+      console.warn(`No answer selected for question ${questionId}`);
+      setErrors((prev) => ({ ...prev, [questionId]: "Please select an answer" }));
+      return;
+    }
 
+    const attemptId = parseInt(localStorage.getItem(`attemptId_${trackId}`));
+    if (!attemptId) {
+      setErrors((prev) => ({ ...prev, [questionId]: "Attempt ID is missing" }));
+      console.error("Attempt ID not found in localStorage");
+      return;
+    }
 
     setLoading((prev) => ({ ...prev, [questionId]: true }));
 
-
     try {
+      // Fetch correct answer
       const response = await axios.get(`/api/TrackQuestionOptions/correct/by-question/${questionId}`);
-      if (response.data.success && response.data.data.length > 0) {
-        const correctAnswer = response.data.data[0].optionText;
-        const isCorrect = selectedAnswers[questionId] === correctAnswer;
-        const question = questions.find((q) => q.id === questionId);
+      if (!response.data.success || !response.data.data || response.data.data.length === 0) {
+        throw new Error("Failed to fetch correct answer or no data returned");
+      }
 
+      const correctAnswer = response.data.data[0].optionText;
+      const correctAnswerId = response.data.data[0].id;
+      const isCorrect = selectedAnswers[questionId] === correctAnswer;
+      const question = questions.find((q) => q.id === questionId);
 
-        setFeedbacks((prev) => ({
-          ...prev,
-          [questionId]: {
-            correct: isCorrect,
-            userAnswer: selectedAnswers[questionId],
-            correctAnswer: correctAnswer,
-            explanation: question.explanation || "No explanation provided",
-          },
-        }));
+      // Constructing submissionData (primary format)
+      const submissionData = {
+        attemptId,
+        questionId,
+        selectedOptions: [correctAnswerId],
+      };
 
+      console.log("Submitting data (primary format):", submissionData);
 
-        onSubmit(questionId, isCorrect);
-      } else {
-        setErrors((prev) => ({ ...prev, [questionId]: "Failed to fetch correct answer" }));
+      try {
+        // Submit answer
+        const submitResponse = await axios.post(
+          "http://fit4job.runasp.net/api/TrackQuestionAnswers/submit",
+          submissionData
+        );
+
+        console.log("Submit response:", {
+          status: submitResponse.status,
+          data: submitResponse.data,
+        });
+
+        if (submitResponse.data?.success) {
+          setFeedbacks((prev) => ({
+            ...prev,
+            [questionId]: {
+              correct: isCorrect,
+              userAnswer: selectedAnswers[questionId],
+              correctAnswer,
+              explanation: question.explanation || "No explanation provided",
+            },
+          }));
+          onSubmit(questionId, isCorrect);
+          console.log("Submission successful:", submissionData);
+        } else {
+          throw new Error(`Submission failed: ${submitResponse.data?.message || "Unknown error"}`);
+        }
+      } catch (submitError) {
+        // Fallback: Try alternative submissionData format
+        console.warn("Primary submission failed, trying alternative format:", submitError.message);
+        const alternativeSubmissionData = {
+          AttemptId: attemptId,
+          QuestionId: questionId,
+          SelectedOptionId: correctAnswerId, // Single ID instead of array
+        };
+
+        console.log("Submitting data (alternative format):", alternativeSubmissionData);
+
+        const alternativeResponse = await axios.post(
+          "http://fit4job.runasp.net/api/TrackQuestionAnswers/submit",
+          alternativeSubmissionData
+        );
+
+        console.log("Alternative submit response:", {
+          status: alternativeResponse.status,
+          data: alternativeResponse.data,
+        });
+
+        if (alternativeResponse.data?.success) {
+          setFeedbacks((prev) => ({
+            ...prev,
+            [questionId]: {
+              correct: isCorrect,
+              userAnswer: selectedAnswers[questionId],
+              correctAnswer,
+              explanation: question.explanation || "No explanation provided",
+            },
+          }));
+          onSubmit(questionId, isCorrect);
+          console.log("Submission successful (alternative format):", alternativeSubmissionData);
+        } else {
+          throw new Error(`Alternative submission failed: ${alternativeResponse.data?.message || "Unknown error"}`);
+        }
       }
     } catch (err) {
-      setErrors((prev) => ({ ...prev, [questionId]: "Error fetching correct answer: " + err.message }));
+      console.error("Error in handleAnswerSubmit:", {
+        message: err.message,
+        response: err.response ? {
+          status: err.response.status,
+          data: err.response.data,
+        } : null,
+      });
+      const detailedError = err.response?.data?.message || err.message;
+      setErrors((prev) => ({
+        ...prev,
+        [questionId]: `Error: ${detailedError}`,
+      }));
     } finally {
       setLoading((prev) => ({ ...prev, [questionId]: false }));
     }
@@ -113,11 +196,10 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
                       <button
                         onClick={() => handleAnswerSubmit(question.id)}
                         disabled={!selectedAnswers[question.id] || loading[question.id]}
-                        className={`mt-2 w-full py-2 rounded-xl text-white ${
-                          selectedAnswers[question.id] && !loading[question.id]
-                            ? "bg-indigo-600 hover:bg-indigo-700"
-                            : "bg-gray-400 cursor-not-allowed"
-                        }`}
+                        className={`mt-2 w-full py-2 rounded-xl text-white ${selectedAnswers[question.id] && !loading[question.id]
+                          ? "bg-indigo-600 hover:bg-indigo-700"
+                          : "bg-gray-400 cursor-not-allowed"
+                          }`}
                       >
                         {loading[question.id] ? "Submitting..." : "Submit Answer"}
                       </button>

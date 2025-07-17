@@ -30,6 +30,7 @@ export default function Level({ isOpen, onClose, trackId }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  
   console.log('Level component props:', { isOpen, trackId, userId });
 
   // جلب المستويات وبيانات المحاولات
