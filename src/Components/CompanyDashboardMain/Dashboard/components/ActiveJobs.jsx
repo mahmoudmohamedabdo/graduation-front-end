@@ -7,10 +7,10 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(null); // Track job dropdown
-  const [taskDropdownOpen, setTaskDropdownOpen] = useState(null); // Track task dropdown
-  const dropdownRef = useRef(null); // Ref for job dropdown
-  const taskDropdownRef = useRef(null); // Ref for task dropdown
+  const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [taskDropdownOpen, setTaskDropdownOpen] = useState(null);
+  const dropdownRef = useRef(null);
+  const taskDropdownRef = useRef(null);
 
   const jobTypeMap = {
     1: "Freelance",
@@ -33,7 +33,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     5: "High School",
   };
 
-  // Close dropdowns on outside click
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (
@@ -60,8 +59,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
       const userRole = localStorage.getItem("userRole");
       const profileId = localStorage.getItem("profileId");
 
-      console.log("Company ID:", profileId, "User Role:", userRole);
-
       if (!authToken || !["Employer", "Company"].includes(userRole)) {
         if (isMounted) {
           setError("You must be logged in as an Employer to view active jobs");
@@ -72,7 +69,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
 
       if (!profileId) {
         if (isMounted) {
-          setError("Company ID is missing. Please log in again or contact support at support@fit4job.com.");
+          setError("Company ID is missing. Please log in again or contact support.");
           navigate("/login");
         }
         return;
@@ -81,7 +78,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
       try {
         setIsLoading(true);
         const endpoint = `http://fit4job.runasp.net/api/Jobs/Company/${profileId}?t=${Date.now()}`;
-        console.log("Fetching jobs from:", endpoint);
         const response = await fetch(endpoint, {
           method: "GET",
           headers: {
@@ -90,29 +86,25 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
           },
         });
 
-        console.log("Jobs API response status:", response.status);
         if (!response.ok) {
           const text = await response.text();
           let result;
           try {
             result = JSON.parse(text);
-            throw new Error(result.message || `Failed to fetch jobs: ${response.statusText}`);
+            throw new Error(result.message || `Failed to fetch jobs`);
           } catch {
-            throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+            throw new Error(`Failed to fetch jobs`);
           }
         }
 
         const result = await response.json();
-        console.log("Fetched jobs response:", JSON.stringify(result, null, 2));
 
         if (result.success && Array.isArray(result.data)) {
           const filteredJobs = result.data.filter((job) => String(job.companyId) === String(profileId));
-          // Fetch tasks for each job
           const jobsWithTasks = await Promise.all(
             filteredJobs.map(async (job) => {
               try {
                 const taskEndpoint = `http://fit4job.runasp.net/api/CompanyTasks/${job.id}`;
-                console.log(`Fetching tasks for job ${job.id} from:`, taskEndpoint);
                 const taskResponse = await fetch(taskEndpoint, {
                   method: "GET",
                   headers: {
@@ -120,40 +112,42 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
                     "Content-Type": "application/json",
                   },
                 });
+
                 if (!taskResponse.ok) {
                   if (taskResponse.status === 404) {
-                    console.log(`No tasks found for job ${job.id}: ${taskResponse.statusText}`);
                     return { ...job, hasTasks: false, tasks: [] };
                   }
-                  throw new Error(`Failed to fetch tasks: ${taskResponse.statusText}`);
+                  throw new Error(`Failed to fetch tasks`);
                 }
+
                 const taskResult = await taskResponse.json();
-                console.log(`Tasks for job ${job.id}:`, JSON.stringify(taskResult, null, 2));
+                const tasks = taskResult.success && taskResult.data
+                  ? Array.isArray(taskResult.data)
+                    ? taskResult.data
+                    : [taskResult.data]
+                  : [];
+
                 return {
                   ...job,
-                  hasTasks: taskResult.success && taskResult.data && taskResult.data.length > 0,
-                  tasks: taskResult.success && taskResult.data ? taskResult.data : [],
+                  hasTasks: taskResult.success && tasks.length > 0,
+                  tasks,
                 };
-              } catch (err) {
-                console.warn(`Error fetching tasks for job ${job.id}: ${err.message}`);
+              } catch {
                 return { ...job, hasTasks: false, tasks: [] };
               }
             })
           );
-          if (isMounted) setJobs(jobsWithTasks);
-        } else if (result.errorCode === 101 || result.message === "No jobs found for this company.") {
+          if (isMounted) {
+            setJobs(jobsWithTasks);
+          }
+        } else if (result.message === "No jobs found for this company.") {
           if (isMounted) setJobs([]);
         } else {
           throw new Error(result.message || "Invalid response format");
         }
       } catch (err) {
-        console.error("Error fetching jobs:", err.message);
         if (isMounted) {
-          setError(
-            err.message.includes("You must be logged in as an Employer")
-              ? "You must be logged in as an Employer to view active jobs. Please verify your account type or contact support at support@fit4job.com."
-              : `Failed to fetch jobs: ${err.message}. Please try again or contact support at support@fit4job.com.`
-          );
+          setError(`Failed to fetch jobs: ${err.message}`);
         }
       } finally {
         if (isMounted) setIsLoading(false);
@@ -171,7 +165,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   };
 
   const handleEdit = (jobId) => {
-    navigate(`/job-quiz/${jobId}`, { state: { refreshJobs } });
+    navigate(`/job-quiz/${jobId}`); // ✅ Removed state
     setDropdownOpen(null);
   };
 
@@ -196,7 +190,7 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
       setJobs(jobs.filter((job) => job.id !== jobId));
       if (refreshJobs) refreshJobs();
     } catch (err) {
-      setError(`Failed to delete job: ${err.message}. Please try again or contact support at support@fit4job.com.`);
+      setError(`Failed to delete job: ${err.message}`);
     } finally {
       setDropdownOpen(null);
     }
@@ -225,21 +219,20 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
         throw new Error("Failed to delete task");
       }
 
-      // Update job tasks and hasTasks status
       setJobs(
         jobs.map((job) =>
           job.id === jobId
             ? {
                 ...job,
                 tasks: job.tasks.filter((task) => task.id !== taskId),
-                hasTasks: job.tasks.length > 1, // Still has tasks if more than one remains
+                hasTasks: job.tasks.length > 1,
               }
             : job
         )
       );
       if (refreshJobs) refreshJobs();
     } catch (err) {
-      setError(`Failed to delete task: ${err.message}. Please try again or contact support at support@fit4job.com.`);
+      setError(`Failed to delete task: ${err.message}`);
     } finally {
       setTaskDropdownOpen(null);
     }
@@ -252,12 +245,12 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
 
   const toggleDropdown = (jobId) => {
     setDropdownOpen(dropdownOpen === jobId ? null : jobId);
-    setTaskDropdownOpen(null); // Close task dropdown if job dropdown is toggled
+    setTaskDropdownOpen(null);
   };
 
   const toggleTaskDropdown = (jobId) => {
     setTaskDropdownOpen(taskDropdownOpen === jobId ? null : jobId);
-    setDropdownOpen(null); // Close job dropdown if task dropdown is toggled
+    setDropdownOpen(null);
   };
 
   return (
@@ -279,15 +272,15 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
           No active jobs found.{" "}
           <button onClick={handleAddNew} className="text-blue-600 hover:underline">
             Post a new job
-          </button>{" "}
-          or verify your account settings if you recently added a job.
+          </button>
+          .
         </p>
       )}
 
       <div className="space-y-4">
-        {jobs.map((job, idx) => (
+        {jobs.map((job) => (
           <div
-            key={job.id || idx}
+            key={job.id}
             className="border rounded-lg px-4 py-3 flex justify-between items-center hover:shadow-sm"
           >
             <div>
@@ -300,13 +293,17 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
               </p>
             </div>
             <div className="flex items-center gap-3 relative">
-              {job.hasTasks && (
+              {job.hasTasks ? (
                 <span
                   className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full cursor-pointer"
                   title="Click to manage tasks"
                   onClick={() => toggleTaskDropdown(job.id)}
                 >
                   Contains Tasks
+                </span>
+              ) : (
+                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                  No Tasks
                 </span>
               )}
               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
