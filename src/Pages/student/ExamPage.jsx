@@ -61,14 +61,35 @@ const ExamPage = () => {
     fetchQuestionsAndOptions();
   }, [trackId]);
 
-  const handleQuestionSubmit = (questionId, isCorrect) => {
+  /* const handleQuestionSubmit = (questionId, isCorrect) => {
     if (!completed.some((q) => q.id === questionId)) {
       setCompleted((prev) => [
         ...prev,
         { id: questionId, status: isCorrect ? "correct" : "wrong" },
       ]);
     }
+
+  }; */
+
+  const handleQuestionSubmit = async (questionId, isCorrect, submissionData) => {
+    try {
+      // Send the data to the backend API
+      const response = await axios.post("http://fit4job.runasp.net/api/TrackQuestionAnswers/submit", submissionData);
+
+      if (response.data.success) {
+        // Update the completed questions list with the status
+        setCompleted((prev) => [
+          ...prev,
+          { id: questionId, status: isCorrect ? "correct" : "wrong" },
+        ]);
+      } else {
+        setError("Error submitting answer");
+      }
+    } catch (err) {
+      setError("Error submitting answer: " + err.message);
+    }
   };
+
 
   const percentage = questions.length > 0 ? Math.round((completed.length / questions.length) * 100) : 0;
 
@@ -79,6 +100,9 @@ const ExamPage = () => {
   if (error) {
     return <div className="text-center text-red-500">{error}</div>;
   }
+  const handleTakeQuestion = (question) => {
+  setActiveQuestion(question); // Set the active question
+};
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -103,6 +127,8 @@ const ExamPage = () => {
           onSubmit={handleQuestionSubmit}
         />
       )}
+
+
     </div>
   );
 };

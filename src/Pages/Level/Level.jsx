@@ -99,7 +99,7 @@ export default function Level({ isOpen, onClose, trackId }) {
                 }
               } catch (err) {
                 console.warn(`No attempt found for track ${level.id}:`, err.response?.data || err.message);
-                attemptsData[level.id] = null; // لا توجد محاولة
+                attemptsData[level.id] = null; 
               }
             })
           );

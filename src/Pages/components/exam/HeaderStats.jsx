@@ -1,10 +1,10 @@
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
-import useCountdown from "../../../Pages/hooks/useCountdown"; // تأكدي من صحة المسار
+// import useCountdown from "../../../Pages/hooks/useCountdown"; // تأكدي من صحة المسار
 
 const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage, trackId }) => {
   const navigate = useNavigate();
-  const [timeLeft, , rawSeconds] = useCountdown(100);
+  // const [timeLeft, , rawSeconds] = useCountdown(100);
 
   const BackToTracks = () => {
     if (trackId) {
@@ -44,7 +44,7 @@ const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage
           <span className="text-sm font-semibold text-blue-600">{percentage}%</span>
         </div>
 
-
+{/* 
         <div className="text-right">
           <p
             className={`text-sm font-semibold ${
@@ -54,7 +54,7 @@ const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage
             {timeLeft}
           </p>
           <p className="text-xs text-gray-500">Est. 10 min</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

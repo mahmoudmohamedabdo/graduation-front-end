@@ -5,16 +5,19 @@ import { LuRefreshCcw } from "react-icons/lu";
 import axios from "axios";
 import AnswerFeedback from "./AnswerFeedback";
 
+
 const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({}); // تخزين الإجابات المختارة لكل سؤال
   const [feedbacks, setFeedbacks] = useState({}); // تخزين الفيدباك لكل سؤال
   const [loading, setLoading] = useState({}); // حالة التحميل لكل سؤال
   const [errors, setErrors] = useState({}); // حالة الخطأ لكل سؤال
 
+
   const getStatus = (questionId) => {
     const q = completed.find((c) => c.id === questionId);
     return q ? q.status : null;
   };
+
 
   const getStatusIcon = (status) => {
     if (status === "correct") return <IoMdCheckmarkCircle className="text-blue-600 text-base" />;
@@ -22,10 +25,13 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
     return <LuRefreshCcw className="text-gray-400 text-base" />;
   };
 
+
   const handleAnswerSubmit = async (questionId) => {
     if (!selectedAnswers[questionId]) return; // لا يتم الإرسال إذا لم يتم اختيار إجابة
 
+
     setLoading((prev) => ({ ...prev, [questionId]: true }));
+
 
     try {
       const response = await axios.get(`/api/TrackQuestionOptions/correct/by-question/${questionId}`);
@@ -33,6 +39,7 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
         const correctAnswer = response.data.data[0].optionText;
         const isCorrect = selectedAnswers[questionId] === correctAnswer;
         const question = questions.find((q) => q.id === questionId);
+
 
         setFeedbacks((prev) => ({
           ...prev,
@@ -43,6 +50,7 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
             explanation: question.explanation || "No explanation provided",
           },
         }));
+
 
         onSubmit(questionId, isCorrect);
       } else {
@@ -55,12 +63,14 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
     }
   };
 
+
   return (
     <div className="space-y-5 mt-6">
       {Array.isArray(questions) && questions.length > 0 ? (
         questions.map((question) => {
           const status = getStatus(question.id);
           const isFeedbackShown = !!feedbacks[question.id];
+
 
           return (
             <div key={question.id} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
@@ -73,6 +83,7 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
                   </div>
                   <h4 className="font-bold text-md text-gray-900 mb-1">{question.questionText}</h4>
                   <p className="text-sm text-gray-500 mb-3">{question.explanation || "No explanation provided"}</p>
+
 
                   {/* عرض الخيارات كـ radio buttons */}
                   {!isFeedbackShown && question.options && question.options.length > 0 ? (
@@ -115,6 +126,7 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
                     !isFeedbackShown && <p className="text-sm text-gray-500">No options available</p>
                   )}
 
+
                   {/* عرض الفيدباك إذا تم الإرسال */}
                   {isFeedbackShown && (
                     <AnswerFeedback
@@ -133,6 +145,7 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
                       }}
                     />
                   )}
+
 
                   {/* عرض رسالة الخطأ إذا وجدت */}
                   {errors[question.id] && (
@@ -162,4 +175,6 @@ const AllQuestions = ({ questions, completed, onTake, onSubmit }) => {
   );
 };
 
+
 export default AllQuestions;
+
