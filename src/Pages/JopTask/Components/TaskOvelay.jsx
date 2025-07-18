@@ -13,28 +13,62 @@ export default function TaskOverlay({ isClose, isOpen, task, userId, jobApplicat
   const handleSubmit = async () => {
     if (!submission.trim()) return;
 
+    const jobAppId = jobApplicationId || localStorage.getItem('applicationId');
+    const token = localStorage.getItem('authToken');
+
+    // التحقق من القيم الأساسية
+    if (!userId || !jobAppId || !task?.id || !token) {
+      console.error('❌ Missing values:', {
+        userId,
+        jobAppId,
+        taskId: task?.id,
+        token
+      });
+      return alert('Incomplete data or you are not logged in.');
+    }
+    console.log(token)
     const payload = {
-      taskId: task.id,
-      userId,
-      jobApplicationId,
+      taskId: parseInt(task.id),
+      userId: parseInt(userId),
+      jobApplicationId: parseInt(jobAppId),
       submissionNotes: submission,
-      submissionLink: submission, // لنفترض أنه نفس الرابط، يمكنك تخصيص حقل آخر إذا أردت
-      demoLink: "" // فارغ مؤقتًا
+      submissionLink: submission,
+      demoLink: submission.startsWith("http") ? submission : "https://example.com" 
     };
+
+    console.log('📦 Payload to submit:', payload);
 
     try {
       setLoading(true);
-      const res = await axios.post('http://fit4job.runasp.net/api/UserSubmissions', payload);
+      const res = await axios.post(
+        'http://fit4job.runasp.net/api/TaskSubmissions',
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
       if (res.data.success) {
-        console.log('✅ Submission created:', res.data.data);
+        alert("✅ Submission created")
+        console.log(':', res.data.data);
         setHasSubmitted(true);
         isClose();
       } else {
         console.error('❌ Submission failed:', res.data.message);
+        alert('Submission failed. Please try again.');
       }
-    } catch (err) {
-      console.error('❌ API Error:', err.message);
-    } finally {
+    }  catch (err) {
+  if (err.response) {
+    console.error('❌ API Error [400]:', err.response.data);
+    alert(`API Error: ${err.response.data.message || 'Bad Request'}`);
+  } else {
+    console.error('❌ Unknown Error:', err.message);
+    alert('Something went wrong. Please try again.');
+  }
+}
+ finally {
       setLoading(false);
     }
   };
@@ -49,12 +83,8 @@ export default function TaskOverlay({ isClose, isOpen, task, userId, jobApplicat
   if (!isOpen || !task) return null;
 
   return (
-    <div
-      className="fixed inset-0 flex justify-center items-center z-50 p-4"
-      style={{ backgroundColor: 'rgba(156, 163, 175, 0.3)' }}
-    >
+    <div className="fixed inset-0 flex justify-center items-center z-50 p-4 bg-gray-400 bg-opacity-30">
       <div className="bg-white shadow-xl rounded-xl max-w-3xl w-full mx-4 p-6 relative overflow-y-auto max-h-[90vh] border border-gray-200">
-        {/* Close Button */}
         <button
           onClick={isClose}
           className="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-2xl"
@@ -62,7 +92,6 @@ export default function TaskOverlay({ isClose, isOpen, task, userId, jobApplicat
           ✕
         </button>
 
-        {/* Modal Content */}
         <div>
           <div className="mb-6">
             <span className="text-xl font-semibold text-gray-900 block mb-1">{task.title}</span>

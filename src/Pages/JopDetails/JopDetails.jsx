@@ -45,7 +45,7 @@ export default function JobDetails() {
 
   useEffect(() => {
     if (userId && id && authToken) {
-      fetch(`http://fit4job.runasp.net/api/JobApplications?userId=${userId}&jobId=${id}`, {
+      fetch(`http://fit4job.runasp.net/api/JobApplications/job/${id}/user/${userId}`, {
         headers: {
           accept: 'text/plain',
           Authorization: `Bearer ${authToken}`,
@@ -66,7 +66,6 @@ export default function JobDetails() {
             if (currentApplication) {
               setHasApplied(true);
               setApplicationId(currentApplication.id);
-              localStorage.setItem('applicationId', currentApplication.id);
               
             } else {
               setHasApplied(false);
@@ -109,6 +108,7 @@ export default function JobDetails() {
       status: 0,
       appliedAt: new Date().toISOString(),
     };
+
 
     try {
       const response = await fetch('http://fit4job.runasp.net/api/JobApplications', {

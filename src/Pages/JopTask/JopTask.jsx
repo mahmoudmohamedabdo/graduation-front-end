@@ -13,11 +13,24 @@ export default function JopTask() {
   const [error, setError] = useState(null);
 
   const userId = localStorage.getItem("userId");
-
+   console.log("first",userId)
   const handleOpenOverlay = () => setShowOverlay(true);
   const handleCloseOverlay = () => setShowOverlay(false);
-   const applicationId=localStorage.getItem("applicationId")
-   
+
+  // ✅ طباعة القيم عند تغيرها
+  useEffect(() => {
+    console.log('✅ userId:', userId);
+    console.log('✅ jobId:', jobId);
+  }, [userId, jobId]);
+
+  // ✅ طباعة jobApplicationId بعد التحديث
+  useEffect(() => {
+    if (jobApplicationId !== null) {
+      console.log('✅ jobApplicationId:', jobApplicationId);
+    }
+  }, [jobApplicationId]);
+
+  // 🟢 جلب بيانات المهمة
   useEffect(() => {
     const fetchTask = async () => {
       try {
@@ -40,14 +53,19 @@ export default function JopTask() {
     fetchTask();
   }, [jobId]);
 
-  // Fetch Job Application
+  // 🟢 جلب JobApplicationId
   useEffect(() => {
     const fetchJobApplication = async () => {
       try {
-        const res = await axios.get(`hhttp://fit4job.runasp.net/api/JobApplications/job/${jobId}/user/${userId}`);
+        const res = await axios.get(
+          `http://fit4job.runasp.net/api/JobApplications/job/${jobId}/user/${userId}`
+        );
+
         if (res.data.success && res.data.data) {
+          const applicationId = res.data.data.id;
           setJobApplicationId(applicationId);
-       
+          localStorage.setItem("applicationId", applicationId);
+          console.log('✅ Job Application found and saved:', applicationId);
         } else {
           console.warn('⚠️ Job Application not found for this user and job.');
           setJobApplicationId(null);
