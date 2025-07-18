@@ -141,12 +141,14 @@ export default function HomePage() {
     setCourses(allCourses);
   };
 
+  const username = localStorage.getItem('username') || 'Guest';
+
   return (
     <div>
       <Navbar />
       <main className="py-12 bg-gray-50 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-5">
-          <h3 className="text-xl font-semibold text-gray-800 mb-8">Welcome back, Rola Alaa</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-8">Welcome back, {username}</h3>
 
           {/* Hero Content */}
           <div className="flex flex-col lg:flex-row justify-between items-center gap-8">

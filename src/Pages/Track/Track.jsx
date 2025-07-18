@@ -43,6 +43,7 @@ export default function Track() {
 
           const trackInfo = {
             id: track.id || 0,
+            categoryId: track.categoryId, // أضف هذا السطر
             name: track.name || 'Unnamed Track',
             description: track.description || 'No description available',
             isPremium: track.isPremium || false,
@@ -227,6 +228,7 @@ export default function Track() {
                   isPremium={track.isPremium}
                   price={track.isPremium ? track.price : null}
                   trackId={track.id}
+                  categoryId={track.categoryId}
                   levelCount={track.levelCount}
                 />
               ))}

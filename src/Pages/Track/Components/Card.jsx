@@ -4,10 +4,10 @@ import nextArrow from '../../../assets/Images/nextArrow.png';
 import Learning from '../../../assets/Images/LearningArrow.png';
 import Level from '../../Level/Level';
 
-export default function Card({ title, description, isPremium, price, trackId, questionCount, levelCount }) {
+export default function Card({ title, description, isPremium, price, trackId, categoryId, questionCount, levelCount }) {
   const [showModal, setShowModal] = useState(false);
 
-  console.log('Card props:', { title, description, isPremium, price, trackId, questionCount, levelCount });
+  console.log('Card props:', { title, description, isPremium, price, trackId, categoryId, questionCount, levelCount });
 
   return (
     <>
@@ -69,6 +69,7 @@ export default function Card({ title, description, isPremium, price, trackId, qu
               isOpen={showModal}
               onClose={() => setShowModal(false)}
               trackId={trackId}
+              categoryId={categoryId}
             />
           </div>
         </div>

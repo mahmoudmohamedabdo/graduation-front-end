@@ -2,7 +2,7 @@ import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 // import useCountdown from "../../../Pages/hooks/useCountdown"; // تأكدي من صحة المسار
 
-const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage, trackId }) => {
+const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage, trackId, trackCategory, trackDescription }) => {
   const navigate = useNavigate();
   // const [timeLeft, , rawSeconds] = useCountdown(100);
 
@@ -24,10 +24,10 @@ const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage
           <div className="flex items-center text-sm text-gray-500 gap-2 mt-1">
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              <span>Front-End Development</span>
+              <span>{trackCategory}</span>
             </div>
             <span className="text-gray-400">•</span>
-            <span>New to React - Basic concepts and fundamentals</span>
+            <span>{trackDescription}</span>
           </div>
         </div>
       </div>

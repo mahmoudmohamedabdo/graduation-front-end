@@ -91,7 +91,7 @@ const QuestionModal = ({ question, onClose, onSubmit }) => {
     setShowFeedback(true);
 
     // Pass the questionId, isCorrect, and submissionData to onSubmit
-    onSubmit(question.id, isCorrect, submissionData);
+    onSubmit(question.id, isCorrect);
   };
 
   if (!question) return null;
