@@ -22,7 +22,7 @@ const difficultyColors = {
   Hard: { bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]' },
 };
 
-export default function Level({ isOpen, onClose, trackId }) {
+export default function Level({ isOpen, onClose, trackId, categoryId }) {
   const navigate = useNavigate();
   const userId = localStorage.getItem('userId');
   const [levels, setLevels] = useState([]);
@@ -49,69 +49,72 @@ export default function Level({ isOpen, onClose, trackId }) {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('No auth token found in localStorage');
 
-        // جلب المستويات
-        console.log('Fetching levels for trackId:', trackId);
-        const response = await axios.get(`http://fit4job.runasp.net/api/Tracks/by-category/${trackId}`, {
+        // جلب بيانات المسار (track) كـ level واحد من by-category
+        console.log('Fetching track as level for trackId:', trackId, 'and categoryId:', categoryId);
+        const response = await axios.get(`http://fit4job.runasp.net/api/Tracks/by-category/${categoryId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log('Raw fetched levels data:', response.data);
+        console.log('Raw fetched track data:', response.data);
 
-        if (response.data && response.data.data && Array.isArray(response.data.data)) {
-          const formattedLevels = response.data.data.map(level => ({
-            levelName: level.name || 'Unnamed Level',
-            description: level.description || 'No description available',
-            difficultyBreakdown: [
-              { difficulty: 'Easy', count: level.trackDetails?.easyQuestionsCounter || 0 },
-              { difficulty: 'Medium', count: level.trackDetails?.mediumQuestionsCounter || 0 },
-              { difficulty: 'Hard', count: level.trackDetails?.hardQuestionsCounter || 0 },
-            ].filter(diff => diff.count >= 0),
-            questionTypes: [
-              { type: 'multiple choice', count: level.trackDetails?.multipleChoiceQuestionsCounter || 0 },
-              { type: 'true false', count: level.trackDetails?.trueOrFalseQuestionsCounter || 0 },
-              { type: 'written', count: level.trackDetails?.writtenQuestionsCounter || 0 },
-            ].filter(qt => qt.count >= 0),
-            duration: level.duration || '10 min',
-            questionCount: level.trackQuestionsCount || 0,
-            id: level.id,
-          }));
-          setLevels(formattedLevels);
-
-          // جلب بيانات المحاولات
-          const attemptsData = {};
-          await Promise.all(
-            formattedLevels.map(async (level) => {
-              try {
-                const attemptId = localStorage.getItem(`attemptId_${level.id}`);
-                if (attemptId) {
-                  const attemptResponse = await axios.get(
-                    `http://fit4job.runasp.net/api/TrackAttempts/${attemptId}`,
-                    {
-                      headers: { Authorization: `Bearer ${token}` },
-                    }
-                  );
-                  console.log(`Attempt data for track ${level.id}:`, attemptResponse.data);
-                  if (attemptResponse.data.success && attemptResponse.data.data) {
-                    attemptsData[level.id] = attemptResponse.data.data;
-                  } else {
-                    attemptsData[level.id] = null;
-                  }
-                } else {
-                  attemptsData[level.id] = null;
-                }
-              } catch (err) {
-                console.warn(`No attempt found for track ${level.id}:`, err.response?.data || err.message);
-                attemptsData[level.id] = null; 
-              }
-            })
-          );
-          setAttempts(attemptsData);
-
-          if (formattedLevels.length === 0) {
-            setError('No levels found for this track.');
+        const tracks = Array.isArray(response.data.data) ? response.data.data : [];
+        const level = tracks.find(t => t.id === Number(trackId));
+        if (level) {
+          console.log('LEVEL DATA:', level);
+          console.log('trackDetails:', level?.trackDetails);
+          // معالجة trackDetails سواء كانت مصفوفة أو كائن
+          let details = level?.trackDetails;
+          if (Array.isArray(details)) {
+            details = details[0] || {};
+          } else if (!details) {
+            details = {};
           }
+          const formattedLevel = {
+            levelName: level?.name || 'Unnamed Level',
+            description: level?.description || 'No description available',
+            difficultyBreakdown: [
+              { difficulty: 'Easy', count: details.easyQuestionsCounter ?? 0 },
+              { difficulty: 'Medium', count: details.mediumQuestionsCounter ?? 0 },
+              { difficulty: 'Hard', count: details.hardQuestionsCounter ?? 0 },
+            ],
+            questionTypes: [
+              { type: 'multiple choice', count: details.multipleChoiceQuestionsCounter ?? 0 },
+              { type: 'true false', count: details.trueOrFalseQuestionsCounter ?? 0 },
+              { type: 'written', count: details.writtenQuestionsCounter ?? 0 },
+            ],
+            duration: level?.duration || '10 min',
+            questionCount: level?.trackQuestionsCount ?? 0,
+            id: level?.id,
+          };
+          setLevels([formattedLevel]);
+
+          // جلب بيانات المحاولة
+          const attemptsData = {};
+          try {
+            const attemptId = localStorage.getItem(`attemptId_${level?.id}`);
+            if (attemptId) {
+              const attemptResponse = await axios.get(
+                `http://fit4job.runasp.net/api/TrackAttempts/${attemptId}`,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              );
+              console.log(`Attempt data for track ${level?.id}:`, attemptResponse.data);
+              if (attemptResponse.data.success && attemptResponse.data.data) {
+                attemptsData[level?.id] = attemptResponse.data.data;
+              } else {
+                attemptsData[level?.id] = null;
+              }
+            } else {
+              attemptsData[level?.id] = null;
+            }
+          } catch (err) {
+            console.warn(`No attempt found for track ${level?.id}:`, err.response?.data || err.message);
+            attemptsData[level?.id] = null; 
+          }
+          setAttempts(attemptsData);
         } else {
-          console.warn('Invalid or empty levels data:', response.data);
-          setError('No valid levels data returned from API.');
+          console.warn('Invalid or empty track data:', response.data);
+          setError('No valid level data returned from API.');
           setLevels([]);
         }
       } catch (error) {
