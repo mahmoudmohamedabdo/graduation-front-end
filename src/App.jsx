@@ -16,7 +16,7 @@ import VerifyCode from './Components/VerifyCode'
 import CompanyDashboard from "./Components/CompanyDashboardMain/Dashboard/CompanyDashboard";
 import JobPostForm from "./Components/CompanyDashboardMain/JobPostForm";
 import CompanyProfile from "./Components/CompanyDashboardMain/CompanyProfile";
-import "./app.css";
+import "./App.css";
 import "./index.css";
 import Login from "./Components/login";
 import Signup from "./Components/SignUp";

@@ -1,6 +1,6 @@
 import React from 'react';
 import profile from '../../assets/Images/CmpanyProfile.png';
-import location from '../../assets/Images/location.png';
+import location from '../../assets/Images/Location.png';
 import edit from '../../assets/Images/Edit.png'
 import {
   GlobeAltIcon,
