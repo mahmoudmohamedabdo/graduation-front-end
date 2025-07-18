@@ -12,8 +12,14 @@ export default function JobDetails() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [hasApplied, setHasApplied] = useState(false);
-  const [applicationId, setApplicationId] = useState(null);
+  const [hasApplied, setHasApplied] = useState(() => {
+    // تحميل حالة التقديم من localStorage عند التهيئة
+    return localStorage.getItem('applicationId') ? true : false;
+  });
+  const [applicationId, setApplicationId] = useState(() => {
+    // تحميل applicationId من localStorage عند التهيئة
+    return localStorage.getItem('applicationId') || null;
+  });
 
   const userId = localStorage.getItem('userId');
   const authToken = localStorage.getItem('authToken');
@@ -62,11 +68,10 @@ export default function JobDetails() {
                 application.jobId === parseInt(id) &&
                 application.userId === parseInt(userId)
             );
-
             if (currentApplication) {
               setHasApplied(true);
               setApplicationId(currentApplication.id);
-              
+              localStorage.setItem('applicationId', currentApplication.id);
             } else {
               setHasApplied(false);
               setApplicationId(null);
@@ -80,6 +85,9 @@ export default function JobDetails() {
         })
         .catch((err) => {
           console.error('Error checking application status:', err);
+          setHasApplied(false);
+          setApplicationId(null);
+          localStorage.removeItem('applicationId');
         });
     }
   }, [userId, id, authToken]);
@@ -109,7 +117,6 @@ export default function JobDetails() {
       appliedAt: new Date().toISOString(),
     };
 
-
     try {
       const response = await fetch('http://fit4job.runasp.net/api/JobApplications', {
         method: 'POST',
@@ -126,17 +133,21 @@ export default function JobDetails() {
       if (response.ok && result.success) {
         setSuccess('Application submitted successfully!');
         setHasApplied(true);
-
         if (result.data?.id) {
           setApplicationId(result.data.id);
-          localStorage.setItem('applicationId', result.data.id); 
-          console.log("first",result.data.id)// ✅ خزن بعد التقديم
+          localStorage.setItem('applicationId', result.data.id);
+          console.log("Application ID stored:", result.data.id);
         }
       } else {
+        if (result.message === 'You have already applied for this job.') {
+          setHasApplied(true);
+          setApplicationId(localStorage.getItem('applicationId') || null);
+        }
         setError(result.message || 'Failed to submit application.');
       }
     } catch (err) {
       setError('Network error: Could not submit application. ' + err.message);
+      setHasApplied(false);
     } finally {
       setLoading(false);
     }
