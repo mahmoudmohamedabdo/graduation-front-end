@@ -1,6 +1,5 @@
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
-// import useCountdown from "../../../Pages/hooks/useCountdown"; // تأكدي من صحة المسار
 
 const HeaderStats = ({ trackName, questionsCompleted, totalQuestions, percentage, trackId, trackCategory, trackDescription }) => {
   const navigate = useNavigate();

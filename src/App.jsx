@@ -17,7 +17,7 @@ import CompanyDashboard from "./Components/CompanyDashboardMain/Dashboard/Compan
 import JobPostForm from "./Components/CompanyDashboardMain/JobPostForm";
 import CompanyProfile from "./Components/CompanyDashboardMain/CompanyProfile";
 import "./App.css";
-import "./index.css";
+import "./App.css";
 import Login from "./Components/login";
 import Signup from "./Components/SignUp";
 import TrackManager from "./Components/Admin Dashboard/TrackManager";
