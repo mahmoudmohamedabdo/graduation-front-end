@@ -117,7 +117,7 @@ const Login = () => {
           }
         }
 
-        if (finalRole === "Company") {
+        if (finalRole === "Employer" ||finalRole === "Company") {
           navigate("/companydashboard");
         } else {
           navigate("/home");

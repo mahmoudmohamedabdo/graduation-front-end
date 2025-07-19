@@ -3,9 +3,9 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../layouts/Navbar";
 import profile from "../assets/Images/profile.png";
-import { FaGithub } from "react-icons/fa";
+import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { HiOutlineDocumentArrowUp } from "react-icons/hi2";
-import { FaLinkedin } from "react-icons/fa";
+import { toast } from 'react-hot-toast';
 
 export default function Profile() {
   const [profileData, setProfileData] = useState(null);
@@ -27,6 +27,7 @@ export default function Profile() {
   const [updateStatus, setUpdateStatus] = useState(null);
   const [profilePicture, setProfilePicture] = useState(null);
   const [resumeFile, setResumeFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
   const resumeInputRef = useRef(null);
 
@@ -35,7 +36,16 @@ export default function Profile() {
   const profileId = localStorage.getItem("profileId") || userId;
   const navigate = useNavigate();
 
-  // Move fetchProfile outside useEffect
+  // Convert file to Base64 for preview
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const fetchProfile = async () => {
     if (!userId || !profileId) {
       setError("No user ID or profile ID found. Please log in to view your profile.");
@@ -56,6 +66,7 @@ export default function Profile() {
       if (!token) {
         setError("No authentication token found. Please log in.");
         setLoading(false);
+        toast.error('❌ No authentication token found');
         return;
       }
 
@@ -92,14 +103,17 @@ export default function Profile() {
           location: response.data.data.location || "",
           description: response.data.data.description || "",
         });
-        console.log("📸 Current Profile Image URL:", profileData?.profileImageUrl || profile);
+        setPreviewImage(response.data.data.profileImageUrl || null);
+        console.log("📸 Current Profile Image URL:", response.data.data.profileImageUrl || profile);
         setError(null);
+        toast.success('✅ Profile fetched successfully!');
       } else {
         setError(
           `${response.data.message || "Failed to fetch profile data."} (Request ID: ${
             response.data.requestId || "unknown"
           })`
         );
+        toast.error(`❌ Failed to fetch profile: ${response.data.message || "Server error"}`);
       }
     } catch (err) {
       console.error("❌ Error fetching profile:", {
@@ -114,6 +128,7 @@ export default function Profile() {
       });
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError("Session expired or access denied. Please log in again.");
+        toast.error('❌ Session expired. Please log in again.');
         localStorage.removeItem("authToken");
         navigate("/login");
       } else if (err.response) {
@@ -122,8 +137,10 @@ export default function Profile() {
             err.response.data.requestId || "unknown"
           })`
         );
+        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
       } else {
         setError(`Network error: Could not fetch profile data. ${err.message}`);
+        toast.error('❌ Network error or invalid request');
       }
       if (fullName) {
         const [firstName = "", lastName = ""] = fullName.split(" ");
@@ -159,10 +176,12 @@ export default function Profile() {
     e.preventDefault();
     if (!userId || !profileId) {
       setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
+      toast.error('❌ No user ID or profile ID found');
       return;
     }
     if (!formData.firstName || !formData.lastName) {
       setUpdateStatus({ type: "error", message: "First name and last name are required." });
+      toast.error('❌ First name and last name are required');
       return;
     }
 
@@ -172,6 +191,7 @@ export default function Profile() {
         type: "error",
         message: "No authentication token found. Please log in again.",
       });
+      toast.error('❌ No authentication token found');
       localStorage.removeItem("authToken");
       navigate("/login");
       return;
@@ -218,6 +238,7 @@ export default function Profile() {
           fullName: `${formData.firstName} ${formData.lastName}`,
         });
         setUpdateStatus({ type: "success", message: "Profile updated successfully!" });
+        toast.success('✅ Profile updated successfully!');
         setIsEditing(false);
         localStorage.setItem("fullName", `${formData.firstName} ${formData.lastName}`);
       } else {
@@ -227,6 +248,7 @@ export default function Profile() {
             response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Failed to update profile: ${response.data.message || "Server error"}`);
       }
     } catch (err) {
       console.error("❌ Error updating profile:", {
@@ -244,6 +266,7 @@ export default function Profile() {
           type: "error",
           message: "Session expired or access denied. Please log in again.",
         });
+        toast.error('❌ Session expired. Please log in again.');
         localStorage.removeItem("authToken");
         navigate("/login");
       } else if (err.response) {
@@ -253,36 +276,53 @@ export default function Profile() {
             err.response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
       } else {
         setUpdateStatus({
           type: "error",
           message: `Network error: Could not update profile. ${err.message}`,
         });
+        toast.error('❌ Network error or invalid request');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleProfilePictureChange = (e) => {
+  const handleProfilePictureChange = async (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
       setProfilePicture(file);
-      setUpdateStatus(null);
+      try {
+        const base64 = await convertToBase64(file);
+        setPreviewImage(base64);
+        setUpdateStatus(null);
+        toast.success('✅ Image selected successfully!');
+      } catch (error) {
+        console.error("❌ Error converting image to Base64:", error);
+        setUpdateStatus({ type: "error", message: "Failed to process image." });
+        toast.error('❌ Failed to process image');
+        setProfilePicture(null);
+        setPreviewImage(null);
+      }
     } else {
       setUpdateStatus({ type: "error", message: "Please select a valid image file." });
+      toast.error('❌ Please select a valid image file');
       setProfilePicture(null);
+      setPreviewImage(null);
     }
   };
 
   const handleUploadProfilePicture = async () => {
     if (!profilePicture) {
       setUpdateStatus({ type: "error", message: "Please select a profile picture to upload." });
+      toast.error('❌ Please select a profile picture to upload');
       return;
     }
 
     if (!userId || !profileId) {
       setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
+      toast.error('❌ No user ID or profile ID found');
       return;
     }
 
@@ -292,6 +332,7 @@ export default function Profile() {
         type: "error",
         message: "No authentication token found. Please log in again.",
       });
+      toast.error('❌ No authentication token found');
       localStorage.removeItem("authToken");
       navigate("/login");
       return;
@@ -320,24 +361,20 @@ export default function Profile() {
 
       console.log("✅ Upload Profile Picture Response:", JSON.stringify(response.data, null, 2));
 
-      if (response.data.success) {
-        const newImageUrl = response.data.data?.profileImageUrl || URL.createObjectURL(profilePicture);
-        
-        if (response.data.data) {
-          setProfileData(response.data.data);
-        } else {
-          setProfileData((prev) => ({
-            ...prev,
-            profileImageUrl: newImageUrl,
-          }));
-        }
-
-        console.log("📸 New Profile Image URL:", newImageUrl);
+      if (response.data.success && response.data.data?.profileImageUrl) {
+        setProfileData((prev) => ({
+          ...prev,
+          profileImageUrl: response.data.data.profileImageUrl,
+        }));
+        setPreviewImage(response.data.data.profileImageUrl);
         setUpdateStatus({ type: "success", message: "Profile picture uploaded successfully!" });
+        toast.success('✅ Profile picture uploaded successfully!');
         setProfilePicture(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
+        // Refetch profile to ensure consistency
+        await fetchProfile();
       } else {
         setUpdateStatus({
           type: "error",
@@ -345,6 +382,7 @@ export default function Profile() {
             response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Failed to upload profile picture: ${response.data.message || "Server error"}`);
       }
     } catch (err) {
       console.error("❌ Error uploading profile picture:", {
@@ -362,6 +400,7 @@ export default function Profile() {
           type: "error",
           message: "Session expired or access denied. Please log in again.",
         });
+        toast.error('❌ Session expired. Please log in again.');
         localStorage.removeItem("authToken");
         navigate("/login");
       } else if (err.response) {
@@ -371,11 +410,13 @@ export default function Profile() {
             err.response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
       } else {
         setUpdateStatus({
           type: "error",
           message: `Network error: Could not upload profile picture. ${err.message}`,
         });
+        toast.error('❌ Network error or invalid request');
       }
     } finally {
       setLoading(false);
@@ -387,8 +428,10 @@ export default function Profile() {
     if (file && (file.type === "application/pdf" || file.type === "application/msword" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
       setResumeFile(file);
       setUpdateStatus(null);
+      toast.success('✅ Resume selected successfully!');
     } else {
       setUpdateStatus({ type: "error", message: "Please select a valid PDF or Word document." });
+      toast.error('❌ Please select a valid PDF or Word document');
       setResumeFile(null);
     }
   };
@@ -396,11 +439,13 @@ export default function Profile() {
   const handleUploadResume = async () => {
     if (!resumeFile) {
       setUpdateStatus({ type: "error", message: "Please select a resume to upload." });
+      toast.error('❌ Please select a resume to upload');
       return;
     }
 
     if (!userId || !profileId) {
       setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
+      toast.error('❌ No user ID or profile ID found');
       return;
     }
 
@@ -410,6 +455,7 @@ export default function Profile() {
         type: "error",
         message: "No authentication token found. Please log in again.",
       });
+      toast.error('❌ No authentication token found');
       localStorage.removeItem("authToken");
       navigate("/login");
       return;
@@ -439,9 +485,9 @@ export default function Profile() {
       console.log("✅ Upload Resume Response:", JSON.stringify(response.data, null, 2));
 
       if (response.data.success) {
-        // Refetch profile to ensure cvFileUrl is updated
         await fetchProfile();
         setUpdateStatus({ type: "success", message: "Resume uploaded successfully!" });
+        toast.success('✅ Resume uploaded successfully!');
         setResumeFile(null);
         if (resumeInputRef.current) {
           resumeInputRef.current.value = "";
@@ -453,6 +499,7 @@ export default function Profile() {
             response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Failed to upload resume: ${response.data.message || "Server error"}`);
       }
     } catch (err) {
       console.error("❌ Error uploading resume:", {
@@ -470,6 +517,7 @@ export default function Profile() {
           type: "error",
           message: "Session expired or access denied. Please log in again.",
         });
+        toast.error('❌ Session expired. Please log in again.');
         localStorage.removeItem("authToken");
         navigate("/login");
       } else if (err.response) {
@@ -479,11 +527,13 @@ export default function Profile() {
             err.response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
       } else {
         setUpdateStatus({
           type: "error",
           message: `Network error: Could not upload resume. ${err.message}`,
         });
+        toast.error('❌ Network error or invalid request');
       }
     } finally {
       setLoading(false);
@@ -493,6 +543,7 @@ export default function Profile() {
   const handleDeleteResume = async () => {
     if (!userId || !profileId) {
       setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
+      toast.error('❌ No user ID or profile ID found');
       return;
     }
 
@@ -502,6 +553,7 @@ export default function Profile() {
         type: "error",
         message: "No authentication token found. Please log in again.",
       });
+      toast.error('❌ No authentication token found');
       localStorage.removeItem("authToken");
       navigate("/login");
       return;
@@ -526,9 +578,9 @@ export default function Profile() {
       console.log("✅ Delete Resume Response:", JSON.stringify(response.data, null, 2));
 
       if (response.data.success) {
-        // Refetch profile to ensure cvFileUrl is cleared
         await fetchProfile();
         setUpdateStatus({ type: "success", message: "Resume deleted successfully!" });
+        toast.success('✅ Resume deleted successfully!');
       } else {
         setUpdateStatus({
           type: "error",
@@ -536,6 +588,7 @@ export default function Profile() {
             response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Failed to delete resume: ${response.data.message || "Server error"}`);
       }
     } catch (err) {
       console.error("❌ Error deleting resume:", {
@@ -553,6 +606,7 @@ export default function Profile() {
           type: "error",
           message: "Session expired or access denied. Please log in again.",
         });
+        toast.error('❌ Session expired. Please log in again.');
         localStorage.removeItem("authToken");
         navigate("/login");
       } else if (err.response) {
@@ -562,11 +616,13 @@ export default function Profile() {
             err.response.data.requestId || "unknown"
           })`,
         });
+        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
       } else {
         setUpdateStatus({
           type: "error",
           message: `Network error: Could not delete resume. ${err.message}`,
         });
+        toast.error('❌ Network error or invalid request');
       }
     } finally {
       setLoading(false);
@@ -613,9 +669,13 @@ export default function Profile() {
         <div className="flex flex-col items-center text-center relative">
           <div className="relative">
             <img
-              src={profileData?.profileImageUrl || profile}
+              src={previewImage || profileData?.profileImageUrl || profile}
               alt="Profile"
               className="w-24 h-24 rounded-full object-cover shadow"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = profile;
+              }}
             />
             {!isEditing && (
               <HiOutlineDocumentArrowUp
@@ -833,16 +893,7 @@ export default function Profile() {
             </section>
           ) : (
             <>
-              {/* About */}
-              <section>
-                <h2 className="text-sm font-bold mb-1 text-gray-900">About</h2>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {profileData?.description ||
-                    "No description provided. Add one to share more about yourself."}
-                </p>
-              </section>
-
-              {/* Additional Profile Info */}
+              {/* Profile Details */}
               <section>
                 <h2 className="text-sm font-bold mb-2 text-gray-900">Profile Details</h2>
                 <div className="space-y-2">
