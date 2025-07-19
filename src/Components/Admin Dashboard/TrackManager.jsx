@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { AdminSideBar } from '../../layouts/AdminSideBar'
 import card1 from '../../assets/Images/card1.png'
 import card2 from '../../assets/Images/card2.png'
 import card3 from '../../assets/Images/card3.png'
@@ -401,8 +400,7 @@ export default function TrackManager() {
     };
 
     return (
-        <AdminSideBar>
-            <div className="bg-gray-50 md:p-10">
+        <div className="bg-gray-50 md:p-10">
                 <div className='flex items-center flex-row justify-between'>
                     <div>
                         <h1 className='text-[24px]'>Track Manager</h1>
@@ -787,7 +785,7 @@ export default function TrackManager() {
                         </div>
                     )}
                 </div>
-            </div></AdminSideBar>
+            </div>
 
     )
 }

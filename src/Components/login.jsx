@@ -3,12 +3,13 @@ import { FiEye, FiEyeOff } from "react-icons/fi";
 import BrandLogo from "../assets/Images/BrandLogo.png";
 import auth from "../assets/Images/auth.jpg";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { VALID_ROLES, ROLES } from "../constants/roles";
+
 
 const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [accountType, setAccountType] = useState("user");
+
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({
     emailOrUsername: "",
@@ -51,7 +52,6 @@ const Login = () => {
       emailOrUsername,
       password,
       rememberMe,
-      role: accountType === "user" ? "JobSeeker" : "Employer",
     };
 
     try {
@@ -77,22 +77,18 @@ const Login = () => {
       if (response.ok && result.success) {
         const data = result.data || result;
         const userId = data.id || data.userId || data.companyId;
-        const userRole =
-          data.role || data.userRole || (accountType === "user" ? "JobSeeker" : "Employer");
+        const userRole = data.role || data.userRole || "JobSeeker";
           const profileId = data.profileId;
           console.log("profileId",profileId)
           localStorage.setItem("profileId",profileId)
         if (!userId) throw new Error("Invalid response: Missing id or companyId");
 
-        const validRoles = ["JobSeeker", "Employer", "Company"];
         const finalRole =
           userRole === "Company"
             ? "Employer"
-            : validRoles.includes(userRole)
+            : VALID_ROLES.includes(userRole)
             ? userRole
-            : accountType === "user"
-            ? "JobSeeker"
-            : "Employer";
+            : "JobSeeker";
 
         // Store essential info always
         localStorage.setItem("userId", userId);
@@ -110,14 +106,16 @@ const Login = () => {
         }
 
         // Store company info
-        if (finalRole === "Employer" || finalRole === "Company") {
+        if (finalRole === ROLES.EMPLOYER || finalRole === ROLES.COMPANY) {
           localStorage.setItem("companyId", data.id);
           if (profileId) {
             localStorage.setItem("profileId", profileId);
           }
         }
 
-        if (finalRole === "Employer" ||finalRole === "Company") {
+        if (finalRole === ROLES.ADMIN) {
+          navigate("/admin-dashboard");
+        } else if (finalRole === ROLES.EMPLOYER || finalRole === ROLES.COMPANY) {
           navigate("/companydashboard");
         } else {
           navigate("/home");
@@ -157,13 +155,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <motion.div
-        className="w-full max-w-5xl rounded-[4rem] overflow-hidden shadow-2xl bg-white flex flex-row-reverse md:flex-row"
-        initial={{ opacity: 0, x: 100 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -100 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
-      >
+      <div className="w-full max-w-5xl rounded-[4rem] overflow-hidden shadow-2xl bg-white flex flex-row-reverse md:flex-row">
         <div className="w-1/2 hidden md:block">
           <img src={auth} alt="Professional workspace" className="w-full h-full object-cover" />
         </div>
@@ -231,44 +223,7 @@ const Login = () => {
                   <p className="text-sm text-red-500 mt-1">{errors.password}</p>
                 )}
               </div>
-              <div className="flex gap-4 mt-2">
-                <label
-                  className={`flex-1 py-2 text-center border rounded-md cursor-pointer ${
-                    accountType === "user"
-                      ? "border-blue-500 text-blue-600 font-semibold"
-                      : "border-gray-300 text-gray-500"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="accountType"
-                    value="user"
-                    className="hidden"
-                    onChange={() => setAccountType("user")}
-                    checked={accountType === "user"}
-                    disabled={isLoading}
-                  />
-                  As a Job Seeker
-                </label>
-                <label
-                  className={`flex-1 py-2 text-center border rounded-md cursor-pointer ${
-                    accountType === "company"
-                      ? "border-blue-500 text-blue-600 font-semibold"
-                      : "border-gray-300 text-gray-500"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="accountType"
-                    value="company"
-                    className="hidden"
-                    onChange={() => setAccountType("company")}
-                    checked={accountType === "company"}
-                    disabled={isLoading}
-                  />
-                  As a Company
-                </label>
-              </div>
+
               <div className="flex items-center justify-between">
                 <label className="text-sm text-gray-500">
                   <input type="checkbox" name="rememberMe" className="mr-2" disabled={isLoading} />
@@ -323,11 +278,11 @@ const Login = () => {
                 className="w-8 h-8 cursor-pointer"
               />
             </div>
+                      </div>
           </div>
         </div>
-      </motion.div>
-    </div>
-  );
+      </div>
+    );
 };
 
 export default Login;
