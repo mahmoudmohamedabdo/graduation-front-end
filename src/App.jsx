@@ -25,6 +25,10 @@ import Signup from "./Components/SignUp";
 import TrackManager from "./Components/Admin Dashboard/TrackManager";
 import AddExamQuestions from "./Pages/AddExamQuestions";
 import AddQuestionOptions from "./Pages/AddQuestionOptions";
+import CompaniesTable from "./Components/Admin Dashboard/CompaniesTable";
+import { AdminDashboardLayout } from "./layouts/AdminDashboardLayout";
+import { AdminDashboardHome } from "./Pages/AdminDashboardHome";
+
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -48,6 +52,11 @@ function App() {
           <Route path="/trackManager" element={<TrackManager/>} />
           <Route path="/admin/exams/:examId/add-questions" element={<AddExamQuestions />} />
           <Route path="/admin/questions/:questionId/add-options" element={<AddQuestionOptions />} />
+          <Route path="/admin-dashboard" element={<ProtectedRoute><AdminDashboardLayout /></ProtectedRoute>}>
+            <Route index element={<AdminDashboardHome />} />
+            <Route path="tracks" element={<TrackManager />} />
+            <Route path="companies" element={<CompaniesTable />} />
+          </Route>
 
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />

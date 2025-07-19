@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Bell,
   LayoutGrid,
@@ -11,6 +12,13 @@ import {
 } from 'lucide-react'
 
 export const AdminDashboard = ({ dataId }) => { // حذف الـ TypeScript typings
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate('/landingpage');
+  };
   return (
     <div className="min-h-screen bg-gray-100" data-id={dataId}>
       {/* Sidebar */}
@@ -20,14 +28,14 @@ export const AdminDashboard = ({ dataId }) => { // حذف الـ TypeScript typi
         </div>
         <nav className="space-y-2 flex-grow">
           <a
-            href="#"
+            href="/admin-dashboard"
             className="flex items-center gap-3 px-4 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg"
           >
             <LayoutGrid size={20} />
             Dashboard
           </a>
           <a
-            href="#"
+            href="/trackManager"
             className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg"
           >
             <FileText size={20} />
@@ -80,7 +88,10 @@ export const AdminDashboard = ({ dataId }) => { // حذف الـ TypeScript typi
               <p className="text-sm font-medium">TechCorp Inc.</p>
             </div>
           </div>
-          <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg">
+          <button 
+            onClick={handleLogout}
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+          >
             <LogOut size={20} />
             <span>Logout</span>
           </button>
