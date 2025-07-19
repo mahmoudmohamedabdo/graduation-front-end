@@ -16,27 +16,27 @@ export default function TaskOverlay({ isClose, isOpen, task, userId, jobApplicat
     const jobAppId = jobApplicationId || localStorage.getItem('applicationId');
     const token = localStorage.getItem('authToken');
 
-    // Validate required values
+    // التحقق من القيم الأساسية
     if (!userId || !jobAppId || !task?.id || !token) {
       console.error('❌ Missing values:', {
         userId,
         jobAppId,
         taskId: task?.id,
-        token: token ? 'Present' : 'Missing',
+        token
       });
       return alert('Incomplete data or you are not logged in.');
     }
-
+    console.log(token)
     const payload = {
       taskId: parseInt(task.id),
       userId: parseInt(userId),
       jobApplicationId: parseInt(jobAppId),
       submissionNotes: submission,
       submissionLink: submission,
-      demoLink: submission.startsWith('http') ? submission : 'https://example.com',
+      demoLink: submission.startsWith("http") ? submission : "https://example.com" 
     };
 
-    console.log('📦 Submitting payload:', payload);
+    console.log('📦 Payload to submit:', payload);
 
     try {
       setLoading(true);
@@ -45,44 +45,30 @@ export default function TaskOverlay({ isClose, isOpen, task, userId, jobApplicat
         payload,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+            Authorization: `Bearer ${token}`
+          }
         }
       );
 
-      console.log('✅ Submission Response:', res.data);
-
       if (res.data.success) {
-        alert('✅ Submission created successfully');
+        alert("✅ Submission created")
+        console.log(':', res.data.data);
         setHasSubmitted(true);
         isClose();
       } else {
         console.error('❌ Submission failed:', res.data.message);
-        alert(`Submission failed: ${res.data.message}`);
+        alert('Submission failed. Please try again.');
       }
-    } catch (err) {
-      console.error('❌ Error submitting task:', {
-        message: err.message,
-        response: err.response ? {
-          status: err.response.status,
-          data: err.response.data,
-          headers: err.response.headers,
-        } : null,
-      });
-      if (err.response) {
-        alert(`API Error: ${err.response.data.message || 'Request failed with status ' + err.response.status}`);
-        if (err.response.status === 401) {
-          alert('Unauthorized. Please log in again.');
-          localStorage.removeItem('authToken');
-        } else if (err.response.status === 405) {
-          alert('Method Not Allowed. Please check the API endpoint with your backend team.');
-        }
-      } else {
-        alert('Something went wrong. Please try again.');
-      }
-    } finally {
+    }  catch (err) {
+  if (err.response) {
+    console.error('❌ API Error [400]:', err.response.data);
+    alert(`API Error: ${err.response.data.message || 'Bad Request'}`);
+  } else {
+    console.error('❌ Unknown Error:', err.message);
+    alert('Something went wrong. Please try again.');
+  }
+}
+ finally {
       setLoading(false);
     }
   };
@@ -91,9 +77,8 @@ export default function TaskOverlay({ isClose, isOpen, task, userId, jobApplicat
     if (isOpen) {
       setSubmission('');
       setHasSubmitted(false);
-      console.log('ℹ️ TaskOverlay opened with task:', task);
     }
-  }, [isOpen, task]);
+  }, [isOpen]);
 
   if (!isOpen || !task) return null;
 

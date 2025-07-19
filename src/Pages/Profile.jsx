@@ -1,1067 +1,740 @@
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import React, { useState, useEffect, Component } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../layouts/Navbar";
-import profile from "../assets/Images/profile.png";
-import { FaGithub, FaLinkedin } from "react-icons/fa";
+import profile from '../assets/Images/profile.png';
+import { FaGithub } from "react-icons/fa";
 import { HiOutlineDocumentArrowUp } from "react-icons/hi2";
-import { toast } from 'react-hot-toast';
+import { FaLinkedin } from "react-icons/fa";
+
+// Error Boundary Component
+class ProfileErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="p-4 bg-red-100 text-red-800 rounded-lg flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            An error occurred: {this.state.error?.message || 'Unknown error. Please try again.'}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function Profile() {
-  const [profileData, setProfileData] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    linkedinUrl: "",
-    githubUrl: "",
-    portfolioUrl: "",
-    experienceYears: "",
-    currentPosition: "",
-    expectedSalary: "",
-    location: "",
-    description: "",
+    fullName: '',
+    currentPosition: '',
+    location: '',
+    about: '',
+    skills: [],
+    cvFileUrl: '',
+    githubUrl: '',
+    linkedinUrl: '',
+    portfolioUrl: '',
+    experienceYears: 0,
+    expectedSalary: 0,
+    email: '',
   });
-  const [updateStatus, setUpdateStatus] = useState(null);
-  const [profilePicture, setProfilePicture] = useState(null);
-  const [resumeFile, setResumeFile] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  const fileInputRef = useRef(null);
-  const resumeInputRef = useRef(null);
-
-  const userId = localStorage.getItem("userId");
-  const fullName = localStorage.getItem("fullName");
-  const profileId = localStorage.getItem("profileId") || userId;
   const navigate = useNavigate();
 
-  // Convert file to Base64 for preview
-  const convertToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
-  };
+  const userId = localStorage.getItem('userId');
+  const authToken = localStorage.getItem('authToken');
 
-  const fetchProfile = async () => {
-    if (!userId || !profileId) {
-      setError("No user ID or profile ID found. Please log in to view your profile.");
-      setLoading(false);
-      if (fullName) {
-        const [firstName = "", lastName = ""] = fullName.split(" ");
-        setFormData((prev) => ({
-          ...prev,
-          firstName,
-          lastName,
-        }));
-      }
+  useEffect(() => {
+    if (!userId || !authToken) {
+      setError('Please log in to view your profile.');
+      navigate('/login', { replace: true });
       return;
     }
 
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        setError("No authentication token found. Please log in.");
-        setLoading(false);
-        toast.error('❌ No authentication token found');
-        return;
-      }
-
-      console.log("🔍 Fetching profile with:", { userId, profileId, token: token ? "Present" : "Missing" });
-
-      const response = await axios.get(
-        `http://fit4job.runasp.net/api/JobSeekerProfiles/${profileId}`,
-        {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`http://fit4job.runasp.net/api/JobSeekerProfile/current`, {
           headers: {
-            accept: "application/json",
-            Authorization: `Bearer ${token}`,
+            accept: 'text/plain',
+            Authorization: `Bearer ${authToken}`,
           },
-        }
-      );
-
-      console.log("✅ Profile Response:", JSON.stringify(response.data, null, 2));
-
-      if (response.data.success && response.data.data) {
-        setProfileData(response.data.data);
-        const [firstName = "", lastName = ""] = fullName
-          ? fullName.split(" ")
-          : response.data.data.fullName
-          ? response.data.data.fullName.split(" ")
-          : ["", ""];
-        setFormData({
-          firstName,
-          lastName,
-          linkedinUrl: response.data.data.linkedinUrl || "",
-          githubUrl: response.data.data.githubUrl || "",
-          portfolioUrl: response.data.data.portfolioUrl || "",
-          experienceYears: response.data.data.experienceYears || "",
-          currentPosition: response.data.data.currentPosition || "",
-          expectedSalary: response.data.data.expectedSalary || "",
-          location: response.data.data.location || "",
-          description: response.data.data.description || "",
         });
-        setPreviewImage(response.data.data.profileImageUrl || null);
-        console.log("📸 Current Profile Image URL:", response.data.data.profileImageUrl || profile);
-        setError(null);
-        toast.success('✅ Profile fetched successfully!');
-      } else {
-        setError(
-          `${response.data.message || "Failed to fetch profile data."} (Request ID: ${
-            response.data.requestId || "unknown"
-          })`
-        );
-        toast.error(`❌ Failed to fetch profile: ${response.data.message || "Server error"}`);
-      }
-    } catch (err) {
-      console.error("❌ Error fetching profile:", {
-        message: err.message,
-        code: err.code,
-        response: err.response ? {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-        } : null,
-        stack: err.stack,
-      });
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        setError("Session expired or access denied. Please log in again.");
-        toast.error('❌ Session expired. Please log in again.');
-        localStorage.removeItem("authToken");
-        navigate("/login");
-      } else if (err.response) {
-        setError(
-          `${err.response.data.message || "Failed to fetch profile data."} (Request ID: ${
-            err.response.data.requestId || "unknown"
-          })`
-        );
-        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
-      } else {
-        setError(`Network error: Could not fetch profile data. ${err.message}`);
-        toast.error('❌ Network error or invalid request');
-      }
-      if (fullName) {
-        const [firstName = "", lastName = ""] = fullName.split(" ");
-        setFormData((prev) => ({
-          ...prev,
-          firstName,
-          lastName,
-        }));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  useEffect(() => {
+        if (!response.ok) {
+          if (response.status === 401) {
+            setError('Unauthorized: Please log in again.');
+            localStorage.removeItem('authToken');
+            navigate('/login', { replace: true });
+            return;
+          }
+          throw new Error('Failed to fetch profile data.');
+        }
+
+        const result = await response.json();
+        console.log('Profile API Response:', JSON.stringify(result, null, 2));
+
+        if (result.success && result.data) {
+          setUserProfile(result.data);
+          setFormData({
+            fullName: result.data.fullName || '',
+            currentPosition: result.data.currentPosition || '',
+            location: result.data.location || '',
+            about: result.data.about || '',
+            skills: Array.isArray(result.data.skills) ? result.data.skills : [],
+            cvFileUrl: result.data.cvFileUrl || '',
+            githubUrl: result.data.githubUrl || '',
+            linkedinUrl: result.data.linkedinUrl || '',
+            portfolioUrl: result.data.portfolioUrl || '',
+            experienceYears: result.data.experienceYears || 0,
+            expectedSalary: result.data.expectedSalary || 0,
+            email: result.data.email || '',
+          });
+          setError(null);
+        } else if (result.message === 'Profile not found.') {
+          setIsCreatingProfile(true);
+          setError('No profile found. Please create your profile below.');
+        } else {
+          throw new Error(result.message || 'No profile data found.');
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setError(err.message);
+        if (err.message.includes('Profile not found')) {
+          setIsCreatingProfile(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchProfile();
-  }, [profileId, fullName, userId, navigate]);
-
-  const handleEditToggle = () => {
-    setIsEditing(!isEditing);
-    setUpdateStatus(null);
-  };
+  }, [userId, authToken, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    if (!userId || !profileId) {
-      setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
-      toast.error('❌ No user ID or profile ID found');
-      return;
-    }
-    if (!formData.firstName || !formData.lastName) {
-      setUpdateStatus({ type: "error", message: "First name and last name are required." });
-      toast.error('❌ First name and last name are required');
-      return;
-    }
+  const handleSkillsChange = (e) => {
+    const skills = e.target.value.split(',').map((skill) => skill.trim()).filter((skill) => skill);
+    setFormData((prev) => ({ ...prev, skills }));
+  };
 
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setUpdateStatus({
-        type: "error",
-        message: "No authentication token found. Please log in again.",
-      });
-      toast.error('❌ No authentication token found');
-      localStorage.removeItem("authToken");
-      navigate("/login");
+  const handleCreateProfile = async (e) => {
+    e.preventDefault();
+    if (!userId || !authToken) {
+      setError('Please log in to create a profile.');
+      navigate('/login');
       return;
     }
 
     const payload = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      linkedinUrl: formData.linkedinUrl,
-      githubUrl: formData.githubUrl,
-      portfolioUrl: formData.portfolioUrl,
+      fullName: formData.fullName || 'Unknown',
+      currentPosition: formData.currentPosition || '',
+      location: formData.location || '',
+      about: formData.about || '',
+      skills: formData.skills || [],
+      cvFileUrl: formData.cvFileUrl || '',
+      githubUrl: formData.githubUrl || '',
+      linkedinUrl: formData.linkedinUrl || '',
+      portfolioUrl: formData.portfolioUrl || '',
       experienceYears: parseInt(formData.experienceYears) || 0,
-      currentPosition: formData.currentPosition,
-      expectedSalary: parseFloat(formData.expectedSalary) || 0,
-      location: formData.location,
-      description: formData.description,
+      expectedSalary: parseInt(formData.expectedSalary) || 0,
+      email: formData.email || '',
     };
 
     try {
       setLoading(true);
-      setUpdateStatus(null);
+      setError(null);
+      let response = await fetch(`http://fit4job.runasp.net/api/JobSeekerProfile/${userId}`, {
+        method: 'PUT',
+        headers: {
+          accept: 'text/plain',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-      console.log("📦 Update Profile Payload:", JSON.stringify(payload, null, 2));
-      console.log("Using profileId:", profileId);
-
-      const response = await axios.put(
-        `http://fit4job.runasp.net/api/JobSeekerProfiles/${profileId}`,
-        payload,
-        {
+      if (!response.ok && response.status === 405) {
+        console.log('PUT failed with 405, trying POST...');
+        response = await fetch(`http://fit4job.runasp.net/api/JobSeekerProfile/${userId}`, {
+          method: 'POST',
           headers: {
-            accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            accept: 'text/plain',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
           },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Unauthorized: Please log in again.');
+          localStorage.removeItem('authToken');
+          navigate('/login', { replace: true });
+          return;
         }
-      );
+        try {
+          const result = await response.json();
+          setError(
+            `${result.message || 'Failed to create profile.'} (Request ID: ${
+              result.requestId || 'unknown'
+            }) Please contact support with this Request ID.`
+          );
+        } catch (jsonErr) {
+          setError(
+            `Invalid response from server. Please contact support with Request ID: unknown. (Status: ${response.status})`
+          );
+        }
+        return;
+      }
 
-      console.log("✅ Update Profile Response:", JSON.stringify(response.data, null, 2));
+      const result = await response.json();
+      console.log('Profile Creation Response:', JSON.stringify(result, null, 2));
 
-      if (response.data.success) {
-        setProfileData({
-          ...profileData,
-          ...payload,
-          fullName: `${formData.firstName} ${formData.lastName}`,
+      if (result.success && result.data) {
+        setUserProfile(result.data);
+        setFormData({
+          ...formData,
+          skills: Array.isArray(result.data.skills) ? result.data.skills : [],
         });
-        setUpdateStatus({ type: "success", message: "Profile updated successfully!" });
-        toast.success('✅ Profile updated successfully!');
-        setIsEditing(false);
-        localStorage.setItem("fullName", `${formData.firstName} ${formData.lastName}`);
+        setIsCreatingProfile(false);
+        setError(null);
       } else {
-        setUpdateStatus({
-          type: "error",
-          message: `${response.data.message || "Failed to update profile."} (Request ID: ${
-            response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Failed to update profile: ${response.data.message || "Server error"}`);
+        setError(
+          `${result.message || 'Failed to create profile.'} (Request ID: ${
+            result.requestId || 'unknown'
+          }) Please contact support with this Request ID.`
+        );
       }
     } catch (err) {
-      console.error("❌ Error updating profile:", {
-        message: err.message,
-        code: err.code,
-        response: err.response ? {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-        } : null,
-        stack: err.stack,
-      });
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        setUpdateStatus({
-          type: "error",
-          message: "Session expired or access denied. Please log in again.",
-        });
-        toast.error('❌ Session expired. Please log in again.');
-        localStorage.removeItem("authToken");
-        navigate("/login");
-      } else if (err.response) {
-        setUpdateStatus({
-          type: "error",
-          message: `${err.response.data.message || "Failed to update profile."} (Request ID: ${
-            err.response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
-      } else {
-        setUpdateStatus({
-          type: "error",
-          message: `Network error: Could not update profile. ${err.message}`,
-        });
-        toast.error('❌ Network error or invalid request');
-      }
+      console.error('Error creating profile:', err);
+      setError(`Network error: Could not create profile. ${err.message} Please contact support.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleProfilePictureChange = async (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      setProfilePicture(file);
-      try {
-        const base64 = await convertToBase64(file);
-        setPreviewImage(base64);
-        setUpdateStatus(null);
-        toast.success('✅ Image selected successfully!');
-      } catch (error) {
-        console.error("❌ Error converting image to Base64:", error);
-        setUpdateStatus({ type: "error", message: "Failed to process image." });
-        toast.error('❌ Failed to process image');
-        setProfilePicture(null);
-        setPreviewImage(null);
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!userId || !authToken) {
+      setError('Please log in to update your profile.');
+      navigate('/login');
+      return;
+    }
+
+    const payload = {
+      fullName: formData.fullName || 'Unknown',
+      currentPosition: formData.currentPosition || '',
+      location: formData.location || '',
+      about: formData.about || '',
+      skills: formData.skills || [],
+      cvFileUrl: formData.cvFileUrl || '',
+      githubUrl: formData.githubUrl || '',
+      linkedinUrl: formData.linkedinUrl || '',
+      portfolioUrl: formData.portfolioUrl || '',
+      experienceYears: parseInt(formData.experienceYears) || 0,
+      expectedSalary: parseInt(formData.expectedSalary) || 0,
+      email: formData.email || '',
+    };
+
+    try {
+      setLoading(true);
+      setError(null);
+      let response = await fetch(`http://fit4job.runasp.net/api/JobSeekerProfile/${userId}`, {
+        method: 'PUT',
+        headers: {
+          accept: 'text/plain',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok && response.status === 405) {
+        console.log('PUT failed with 405, trying POST...');
+        response = await fetch(`http://fit4job.runasp.net/api/JobSeekerProfile/${userId}`, {
+          method: 'POST',
+          headers: {
+            accept: 'text/plain',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(payload),
+        });
       }
-    } else {
-      setUpdateStatus({ type: "error", message: "Please select a valid image file." });
-      toast.error('❌ Please select a valid image file');
-      setProfilePicture(null);
-      setPreviewImage(null);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Unauthorized: Please log in again.');
+          localStorage.removeItem('authToken');
+          navigate('/login', { replace: true });
+          return;
+        }
+        try {
+          const result = await response.json();
+          setError(
+            `${result.message || 'Failed to update profile.'} (Request ID: ${
+              result.requestId || 'unknown'
+            }) Please contact support with this Request ID.`
+          );
+        } catch (jsonErr) {
+          setError(
+            `Invalid response from server. Please contact support with Request ID: unknown. (Status: ${response.status})`
+          );
+        }
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Profile Update Response:', JSON.stringify(result, null, 2));
+
+      if (result.success && result.data) {
+        setUserProfile({ ...userProfile, ...payload });
+        setFormData({
+          ...formData,
+          skills: Array.isArray(result.data.skills) ? result.data.skills : [],
+        });
+        setError(null);
+        alert('Profile updated successfully!');
+      } else {
+        setError(
+          `${result.message || 'Failed to update profile.'} (Request ID: ${
+            result.requestId || 'unknown'
+          }) Please contact support with this Request ID.`
+        );
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError(`Network error: Could not update profile. ${err.message} Please contact support.`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUploadProfilePicture = async () => {
-    if (!profilePicture) {
-      setUpdateStatus({ type: "error", message: "Please select a profile picture to upload." });
-      toast.error('❌ Please select a profile picture to upload');
+  const handleUploadResume = async (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      setError('Please select a file to upload.');
       return;
     }
 
-    if (!userId || !profileId) {
-      setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
-      toast.error('❌ No user ID or profile ID found');
-      return;
-    }
-
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setUpdateStatus({
-        type: "error",
-        message: "No authentication token found. Please log in again.",
-      });
-      toast.error('❌ No authentication token found');
-      localStorage.removeItem("authToken");
-      navigate("/login");
+    if (!['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)) {
+      setError('Invalid file type. Please upload a PDF or Word document.');
       return;
     }
 
     const formData = new FormData();
-    formData.append("profilePicture", profilePicture);
+    formData.append('file', file);
 
     try {
       setLoading(true);
-      setUpdateStatus(null);
+      setError(null);
+      const response = await fetch(`http://fit4job.runasp.net/api/JobSeekerProfile/current/cv`, {
+        method: 'POST',
+        headers: {
+          accept: 'text/plain',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: formData,
+      });
 
-      console.log("Uploading profile picture for:", { profileId, file: profilePicture.name });
-
-      const response = await axios.put(
-        `http://fit4job.runasp.net/api/JobSeekerProfiles/profile/picture/${profileId}`,
-        formData,
-        {
-          headers: {
-            accept: "application/json",
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Unauthorized: Please log in again.');
+          localStorage.removeItem('authToken');
+          navigate('/login', { replace: true });
+          return;
         }
-      );
-
-      console.log("✅ Upload Profile Picture Response:", JSON.stringify(response.data, null, 2));
-
-      if (response.data.success && response.data.data?.profileImageUrl) {
-        setProfileData((prev) => ({
-          ...prev,
-          profileImageUrl: response.data.data.profileImageUrl,
-        }));
-        setPreviewImage(response.data.data.profileImageUrl);
-        setUpdateStatus({ type: "success", message: "Profile picture uploaded successfully!" });
-        toast.success('✅ Profile picture uploaded successfully!');
-        setProfilePicture(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
+        try {
+          const result = await response.json();
+          setError(
+            `${result.message || 'Failed to upload resume.'} (Request ID: ${
+              result.requestId || 'unknown'
+            }) Please contact support with this Request ID.`
+          );
+        } catch (jsonErr) {
+          setError(
+            `Invalid response from server. Please contact support with Request ID: unknown. (Status: ${response.status})`
+          );
         }
-        // Refetch profile to ensure consistency
-        await fetchProfile();
+        return;
+      }
+
+      const result = await response.json();
+      console.log('CV Upload Response:', JSON.stringify(result, null, 2));
+
+      if (result.success && result.data?.cvFileUrl) {
+        setUserProfile({ ...userProfile, cvFileUrl: result.data.cvFileUrl });
+        setFormData({ ...formData, cvFileUrl: result.data.cvFileUrl });
+        setError(null);
+        alert('Resume uploaded successfully!');
       } else {
-        setUpdateStatus({
-          type: "error",
-          message: `${response.data.message || "Failed to upload profile picture."} (Request ID: ${
-            response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Failed to upload profile picture: ${response.data.message || "Server error"}`);
+        setError(
+          `${result.message || 'Failed to upload resume.'} (Request ID: ${
+            result.requestId || 'unknown'
+          }) Please contact support with this Request ID.`
+        );
       }
     } catch (err) {
-      console.error("❌ Error uploading profile picture:", {
-        message: err.message,
-        code: err.code,
-        response: err.response ? {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-        } : null,
-        stack: err.stack,
-      });
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        setUpdateStatus({
-          type: "error",
-          message: "Session expired or access denied. Please log in again.",
-        });
-        toast.error('❌ Session expired. Please log in again.');
-        localStorage.removeItem("authToken");
-        navigate("/login");
-      } else if (err.response) {
-        setUpdateStatus({
-          type: "error",
-          message: `${err.response.data.message || "Failed to upload profile picture."} (Request ID: ${
-            err.response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
-      } else {
-        setUpdateStatus({
-          type: "error",
-          message: `Network error: Could not upload profile picture. ${err.message}`,
-        });
-        toast.error('❌ Network error or invalid request');
-      }
+      console.error('Error uploading resume:', err);
+      setError(`Network error: Could not upload resume. ${err.message} Please contact support.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResumeChange = (e) => {
-    const file = e.target.files[0];
-    if (file && (file.type === "application/pdf" || file.type === "application/msword" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
-      setResumeFile(file);
-      setUpdateStatus(null);
-      toast.success('✅ Resume selected successfully!');
-    } else {
-      setUpdateStatus({ type: "error", message: "Please select a valid PDF or Word document." });
-      toast.error('❌ Please select a valid PDF or Word document');
-      setResumeFile(null);
-    }
+  const handleConnectGithub = () => {
+    console.log('GitHub connect clicked');
   };
 
-  const handleUploadResume = async () => {
-    if (!resumeFile) {
-      setUpdateStatus({ type: "error", message: "Please select a resume to upload." });
-      toast.error('❌ Please select a resume to upload');
-      return;
-    }
-
-    if (!userId || !profileId) {
-      setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
-      toast.error('❌ No user ID or profile ID found');
-      return;
-    }
-
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setUpdateStatus({
-        type: "error",
-        message: "No authentication token found. Please log in again.",
-      });
-      toast.error('❌ No authentication token found');
-      localStorage.removeItem("authToken");
-      navigate("/login");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", resumeFile);
-
-    try {
-      setLoading(true);
-      setUpdateStatus(null);
-
-      console.log("Uploading resume for:", { profileId, file: resumeFile.name });
-
-      const response = await axios.post(
-        `http://fit4job.runasp.net/api/JobSeekerProfiles/current/cv`,
-        formData,
-        {
-          headers: {
-            accept: "text/plain",
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      console.log("✅ Upload Resume Response:", JSON.stringify(response.data, null, 2));
-
-      if (response.data.success) {
-        await fetchProfile();
-        setUpdateStatus({ type: "success", message: "Resume uploaded successfully!" });
-        toast.success('✅ Resume uploaded successfully!');
-        setResumeFile(null);
-        if (resumeInputRef.current) {
-          resumeInputRef.current.value = "";
-        }
-      } else {
-        setUpdateStatus({
-          type: "error",
-          message: `${response.data.message || "Failed to upload resume."} (Request ID: ${
-            response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Failed to upload resume: ${response.data.message || "Server error"}`);
-      }
-    } catch (err) {
-      console.error("❌ Error uploading resume:", {
-        message: err.message,
-        code: err.code,
-        response: err.response ? {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-        } : null,
-        stack: err.stack,
-      });
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        setUpdateStatus({
-          type: "error",
-          message: "Session expired or access denied. Please log in again.",
-        });
-        toast.error('❌ Session expired. Please log in again.');
-        localStorage.removeItem("authToken");
-        navigate("/login");
-      } else if (err.response) {
-        setUpdateStatus({
-          type: "error",
-          message: `${err.response.data.message || "Failed to upload resume."} (Request ID: ${
-            err.response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
-      } else {
-        setUpdateStatus({
-          type: "error",
-          message: `Network error: Could not upload resume. ${err.message}`,
-        });
-        toast.error('❌ Network error or invalid request');
-      }
-    } finally {
-      setLoading(false);
-    }
+  const handleConnectLinkedin = () => {
+    console.log('LinkedIn connect clicked');
   };
-
-  const handleDeleteResume = async () => {
-    if (!userId || !profileId) {
-      setUpdateStatus({ type: "error", message: "No user ID or profile ID found. Please log in." });
-      toast.error('❌ No user ID or profile ID found');
-      return;
-    }
-
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setUpdateStatus({
-        type: "error",
-        message: "No authentication token found. Please log in again.",
-      });
-      toast.error('❌ No authentication token found');
-      localStorage.removeItem("authToken");
-      navigate("/login");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setUpdateStatus(null);
-
-      console.log("Deleting resume for:", { profileId });
-
-      const response = await axios.delete(
-        `http://fit4job.runasp.net/api/JobSeekerProfiles/current/cv`,
-        {
-          headers: {
-            accept: "text/plain",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      console.log("✅ Delete Resume Response:", JSON.stringify(response.data, null, 2));
-
-      if (response.data.success) {
-        await fetchProfile();
-        setUpdateStatus({ type: "success", message: "Resume deleted successfully!" });
-        toast.success('✅ Resume deleted successfully!');
-      } else {
-        setUpdateStatus({
-          type: "error",
-          message: `${response.data.message || "Failed to delete resume."} (Request ID: ${
-            response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Failed to delete resume: ${response.data.message || "Server error"}`);
-      }
-    } catch (err) {
-      console.error("❌ Error deleting resume:", {
-        message: err.message,
-        code: err.code,
-        response: err.response ? {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-        } : null,
-        stack: err.stack,
-      });
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        setUpdateStatus({
-          type: "error",
-          message: "Session expired or access denied. Please log in again.",
-        });
-        toast.error('❌ Session expired. Please log in again.');
-        localStorage.removeItem("authToken");
-        navigate("/login");
-      } else if (err.response) {
-        setUpdateStatus({
-          type: "error",
-          message: `${err.response.data.message || "Failed to delete resume."} (Request ID: ${
-            err.response.data.requestId || "unknown"
-          })`,
-        });
-        toast.error(`❌ Error ${err.response.status}: ${err.response.data.message || "Server error"}`);
-      } else {
-        setUpdateStatus({
-          type: "error",
-          message: `Network error: Could not delete resume. ${err.message}`,
-        });
-        toast.error('❌ Network error or invalid request');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div>
-        <Navbar />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <p className="text-gray-600 text-sm">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div>
-        <Navbar />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-600 text-sm">{error}</p>
-            {(error.includes("Please log in") || error.includes("access denied")) && (
-              <button
-                onClick={() => navigate("/login")}
-                className="mt-2 bg-[#2563EB] text-white rounded-lg px-4 py-1 text-sm hover:bg-blue-700"
-              >
-                Go to Login
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div>
-      <Navbar />
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col items-center text-center relative">
-          <div className="relative">
-            <img
-              src={previewImage || profileData?.profileImageUrl || profile}
-              alt="Profile"
-              className="w-24 h-24 rounded-full object-cover shadow"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = profile;
-              }}
-            />
-            {!isEditing && (
-              <HiOutlineDocumentArrowUp
-                className="absolute top-0 right-0 w-6 h-6 text-blue-600 bg-white rounded-full p-1 shadow cursor-pointer"
-                title="Change profile picture"
-                onClick={() => fileInputRef.current?.click()}
-              />
-            )}
-          </div>
-          <h1 className="text-lg font-semibold mt-4 text-gray-900">
-            {profileData?.fullName || fullName || "Unknown User"}
-          </h1>
-          <p className="text-sm text-gray-600">
-            {profileData?.currentPosition || "No Position"}
-          </p>
-          <p className="text-sm mt-1">{profileData?.location || "No Location"}</p>
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={handleEditToggle}
-              className="bg-[#2563EB] text-white rounded-lg px-4 py-1 text-sm hover:bg-blue-700"
-            >
-              {isEditing ? "Cancel Editing" : "Edit Profile"}
-            </button>
-          </div>
-          {updateStatus && (
-            <p
-              className={`mt-2 text-sm ${
-                updateStatus.type === "error" ? "text-red-500" : "text-green-500"
-              }`}
-            >
-              {updateStatus.message}
-            </p>
-          )}
-          {updateStatus?.message.includes("Please log in") && (
-            <button
-              onClick={() => navigate("/login")}
-              className="mt-2 bg-[#2563EB] text-white rounded-lg px-4 py-1 text-sm hover:bg-blue-700"
-            >
-              Go to Login
-            </button>
-          )}
-          {!isEditing && (
-            <div className="mt-4 flex items-center gap-2">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleProfilePictureChange}
-                className="text-sm text-gray-600"
-                style={{ display: "none" }}
-                id="profilePictureInput"
-                ref={fileInputRef}
-              />
-              <label
-                htmlFor="profilePictureInput"
-                className="bg-gray-100 text-gray-800 rounded-lg px-4 py-1 text-sm hover:bg-gray-200 cursor-pointer"
-              >
-                Choose Picture
-              </label>
-              <button
-                onClick={handleUploadProfilePicture}
-                className="bg-green-600 text-white rounded-lg px-4 py-1 text-sm hover:bg-green-700 disabled:opacity-50"
-                disabled={loading || !profilePicture}
-              >
-                {loading ? "Uploading..." : "Upload Picture"}
-              </button>
+    <ProfileErrorBoundary>
+      <div>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-8">
+          {loading ? (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+              <p className="text-gray-600 text-lg">Loading...</p>
+            </div>
+          ) : error && !userProfile && !isCreatingProfile ? (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+              <div className="p-4 bg-red-100 text-red-800 rounded-lg flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                {error}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full max-w-4xl">
+              {isCreatingProfile ? (
+                <>
+                  <h2 className="text-lg font-bold mb-4 text-gray-900">Create Your Profile</h2>
+                  {error && (
+                    <div className="mb-4 p-4 bg-red-100 text-red-800 rounded-lg flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      {error}
+                    </div>
+                  )}
+                  <form onSubmit={handleCreateProfile} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                      <input
+                        type="text"
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Current Position</label>
+                      <input
+                        type="text"
+                        name="currentPosition"
+                        value={formData.currentPosition}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Location</label>
+                      <input
+                        type="text"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">About</label>
+                      <textarea
+                        name="about"
+                        value={formData.about}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm resize-none"
+                        rows={4}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Skills (comma-separated)</label>
+                      <input
+                        type="text"
+                        name="skills"
+                        value={Array.isArray(formData.skills) ? formData.skills.join(', ') : ''}
+                        onChange={handleSkillsChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                        placeholder="e.g., Java, Python, SQL"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Email</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Experience Years</label>
+                      <input
+                        type="number"
+                        name="experienceYears"
+                        value={formData.experienceYears}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Expected Salary</label>
+                      <input
+                        type="number"
+                        name="expectedSalary"
+                        value={formData.expectedSalary}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">GitHub URL</label>
+                      <input
+                        type="url"
+                        name="githubUrl"
+                        value={formData.githubUrl}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">LinkedIn URL</label>
+                      <input
+                        type="url"
+                        name="linkedinUrl"
+                        value={formData.linkedinUrl}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Portfolio URL</label>
+                      <input
+                        type="url"
+                        name="portfolioUrl"
+                        value={formData.portfolioUrl}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-2"
+                      disabled={loading}
+                    >
+                      {loading ? 'Creating...' : 'Create Profile'}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div className="flex flex-col items-center px-4 py-8 w-full max-w-4xl">
+                  {error && (
+                    <div className="mb-4 p-4 bg-red-100 text-red-800 rounded-lg flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      {error}
+                    </div>
+                  )}
+                  <form onSubmit={handleUpdateProfile} className="w-full space-y-6">
+                    <div className="flex flex-col items-center text-center">
+                      <img
+                        src={userProfile?.profileImageUrl || profile}
+                        alt="Profile"
+                        className="w-24 h-24 rounded-full object-cover shadow"
+                      />
+                      <h1 className="text-lg font-semibold mt-4 text-gray-900">{userProfile?.fullName || 'No Name'}</h1>
+                      <input
+                        type="text"
+                        name="currentPosition"
+                        value={formData.currentPosition}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm mt-2"
+                        placeholder="Current Position"
+                      />
+                      <input
+                        type="text"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm mt-1"
+                        placeholder="Location"
+                      />
+                    </div>
+
+                    <div className="mt-8 w-full space-y-6">
+                      <section>
+                        <h2 className="text-sm font-bold mb-1 text-gray-900">About</h2>
+                        <textarea
+                          name="about"
+                          value={formData.about}
+                          onChange={handleInputChange}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-sm resize-none"
+                          rows={4}
+                          placeholder="About you"
+                        />
+                      </section>
+
+                      <section>
+                        <h2 className="text-sm font-bold mb-2 text-gray-900">Skills</h2>
+                        <input
+                          type="text"
+                          name="skills"
+                          value={Array.isArray(formData.skills) ? formData.skills.join(', ') : ''}
+                          onChange={handleSkillsChange}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                          placeholder="e.g., Java, Python, SQL"
+                        />
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {(Array.isArray(formData.skills) && formData.skills.length > 0) ? (
+                            formData.skills.map((skill, index) => (
+                              <span
+                                key={index}
+                                className="bg-[#F0F2F5] text-[#121417] text-xs px-3 py-[3px] rounded-full"
+                              >
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-600">No skills listed.</p>
+                          )}
+                        </div>
+                      </section>
+
+                      <section>
+                        <h2 className="text-sm font-bold mb-2 text-gray-900">Resume</h2>
+                        <div className="bg-white border rounded-md p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <HiOutlineDocumentArrowUp />
+                            <span className="text-sm text-gray-800">
+                              {formData.cvFileUrl ? 'Resume Uploaded' : 'Upload Resume'}
+                            </span>
+                          </div>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={handleUploadResume}
+                            className="text-sm"
+                          />
+                        </div>
+                      </section>
+
+                      <section>
+                        <h2 className="text-sm font-bold mb-2 text-gray-900">External Profiles</h2>
+                        <div className="space-y-2">
+                          <div className="bg-white border rounded-md p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <FaGithub />
+                              <input
+                                type="url"
+                                name="githubUrl"
+                                value={formData.githubUrl}
+                                onChange={handleInputChange}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                placeholder="GitHub URL"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              className="bg-gray-100 hover:bg-gray-200 text-sm px-4 py-1 rounded"
+                              onClick={handleConnectGithub}
+                            >
+                              {formData.githubUrl ? 'Update' : 'Connect'}
+                            </button>
+                          </div>
+                          <div className="bg-white border rounded-md p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <FaLinkedin />
+                              <input
+                                type="url"
+                                name="linkedinUrl"
+                                value={formData.linkedinUrl}
+                                onChange={handleInputChange}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                placeholder="LinkedIn URL"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              className="bg-gray-100 hover:bg-gray-200 text-sm px-4 py-1 rounded"
+                              onClick={handleConnectLinkedin}
+                            >
+                              {formData.linkedinUrl ? 'Update' : 'Connect'}
+                            </button>
+                          </div>
+                          <div className="bg-white border rounded-md p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-800">Portfolio</span>
+                              <input
+                                type="url"
+                                name="portfolioUrl"
+                                value={formData.portfolioUrl}
+                                onChange={handleInputChange}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                placeholder="Portfolio URL"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section>
+                        <h2 className="text-sm font-bold mb-1 text-gray-900">Exam Attempts</h2>
+                        <p className="text-sm text-gray-600">
+                          You have {userProfile?.userCredit || 0} attempts per track. Use them wisely to showcase your skills.
+                        </p>
+                      </section>
+
+                      <button
+                        type="submit"
+                        className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-2"
+                        disabled={loading}
+                      >
+                        {loading ? 'Updating...' : 'Update Profile'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           )}
         </div>
-
-        <div className="mt-8 w-full max-w-4xl space-y-6">
-          {isEditing ? (
-            <section>
-              <h2 className="text-sm font-bold mb-2 text-gray-900">Edit Profile</h2>
-              <form onSubmit={handleUpdateProfile} className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">First Name</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Current Position</label>
-                  <input
-                    type="text"
-                    name="currentPosition"
-                    value={formData.currentPosition}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">About</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                    rows="4"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">LinkedIn URL</label>
-                  <input
-                    type="url"
-                    name="linkedinUrl"
-                    value={formData.linkedinUrl}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">GitHub URL</label>
-                  <input
-                    type="url"
-                    name="githubUrl"
-                    value={formData.githubUrl}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Portfolio URL</label>
-                  <input
-                    type="url"
-                    name="portfolioUrl"
-                    value={formData.portfolioUrl}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Experience Years</label>
-                  <input
-                    type="number"
-                    name="experienceYears"
-                    value={formData.experienceYears}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Expected Salary</label>
-                  <input
-                    type="number"
-                    name="expectedSalary"
-                    value={formData.expectedSalary}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                {updateStatus && (
-                  <p
-                    className={`text-sm ${
-                      updateStatus.type === "error" ? "text-red-500" : "text-green-500"
-                    }`}
-                  >
-                    {updateStatus.message}
-                  </p>
-                )}
-                {updateStatus?.message.includes("Please log in") && (
-                  <button
-                    type="button"
-                    onClick={() => navigate("/login")}
-                    className="w-full bg-[#2563EB] text-white rounded-lg px-4 py-1 text-sm hover:bg-blue-700"
-                  >
-                    Go to Login
-                  </button>
-                )}
-                <div className="flex gap-2 justify-center">
-                  <button
-                    type="button"
-                    onClick={handleEditToggle}
-                    className="bg-gray-200 text-gray-800 rounded-lg px-4 py-1 text-sm hover:bg-gray-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-[#2563EB] text-white rounded-lg px-4 py-1 text-sm hover:bg-blue-700 disabled:opacity-50"
-                    disabled={loading}
-                  >
-                    {loading ? "Saving..." : "Save"}
-                  </button>
-                </div>
-              </form>
-            </section>
-          ) : (
-            <>
-              {/* Profile Details */}
-              <section>
-                <h2 className="text-sm font-bold mb-2 text-gray-900">Profile Details</h2>
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">LinkedIn:</span>{" "}
-                    {profileData?.linkedinUrl ? (
-                      <a
-                        href={profileData.linkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        {profileData.linkedinUrl}
-                      </a>
-                    ) : (
-                      "Not provided"
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">GitHub:</span>{" "}
-                    {profileData?.githubUrl ? (
-                      <a
-                        href={profileData.githubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        {profileData.githubUrl}
-                      </a>
-                    ) : (
-                      "Not provided"
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Portfolio:</span>{" "}
-                    {profileData?.portfolioUrl ? (
-                      <a
-                        href={profileData.portfolioUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        {profileData.portfolioUrl}
-                      </a>
-                    ) : (
-                      "Not provided"
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Experience Years:</span>{" "}
-                    {profileData?.experienceYears || "Not provided"}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Expected Salary:</span>{" "}
-                    {profileData?.expectedSalary
-                      ? `$${parseFloat(profileData.expectedSalary).toLocaleString()}`
-                      : "Not provided"}
-                  </p>
-                </div>
-              </section>
-
-              {/* Skills */}
-              <section>
-                <h2 className="text-sm font-bold mb-2 text-gray-900">Skills</h2>
-                <div className="flex flex-wrap gap-2">
-                  {["Java", "Python", "SQL", "AWS", "Agile", "Problem Solving"].map((skill) => (
-                    <span
-                      key={skill}
-                      className="bg-[#F0F2F5] text-[#121417] text-xs px-3 py-[3px] rounded-full"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </section>
-
-              {/* Resume Upload */}
-              <section>
-                <h2 className="text-sm font-bold mb-2 text-gray-900">Resume</h2>
-                <div className="bg-white border rounded-md p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <HiOutlineDocumentArrowUp />
-                    <span className="text-sm text-gray-800">
-                      {profileData?.cvFileUrl ? "Resume Uploaded" : "Upload Resume"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleResumeChange}
-                      className="text-sm text-gray-600"
-                      style={{ display: "none" }}
-                      id="resumeInput"
-                      ref={resumeInputRef}
-                    />
-                    <label
-                      htmlFor="resumeInput"
-                      className="bg-gray-100 text-gray-800 rounded-lg px-4 py-1 text-sm hover:bg-gray-200 cursor-pointer"
-                    >
-                      Choose File
-                    </label>
-                    <button
-                      onClick={handleUploadResume}
-                      className="bg-green-600 text-white rounded-lg px-4 py-1 text-sm hover:bg-green-700 disabled:opacity-50"
-                      disabled={loading || !resumeFile}
-                    >
-                      {loading ? "Uploading..." : "Upload Resume"}
-                    </button>
-                    {profileData?.cvFileUrl && (
-                      <button
-                        onClick={handleDeleteResume}
-                        className="bg-red-600 text-white rounded-lg px-4 py-1 text-sm hover:bg-red-700 disabled:opacity-50"
-                        disabled={loading}
-                      >
-                        {loading ? "Deleting..." : "Delete Resume"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* External Profiles */}
-              <section>
-                <h2 className="text-sm font-bold mb-2 text-gray-900">External Profiles</h2>
-                <div className="space-y-2">
-                  <div className="bg-white border rounded-md p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FaGithub />
-                      <span className="text-sm text-gray-800">
-                        {profileData?.githubUrl ? "GitHub Connected" : "GitHub"}
-                      </span>
-                    </div>
-                    <button
-                      className="bg-gray-100 hover:bg-gray-200 text-sm px-4 py-1 rounded"
-                      disabled={!!profileData?.githubUrl}
-                    >
-                      {profileData?.githubUrl ? "Connected" : "Connect"}
-                    </button>
-                  </div>
-                  <div className="bg-white border rounded-md p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FaLinkedin />
-                      <span className="text-sm text-gray-800">
-                        {profileData?.linkedinUrl ? "LinkedIn Connected" : "LinkedIn"}
-                      </span>
-                    </div>
-                    <button
-                      className="bg-gray-100 hover:bg-gray-200 text-sm px-4 py-1 rounded"
-                      disabled={!!profileData?.linkedinUrl}
-                    >
-                      {profileData?.linkedinUrl ? "Connected" : "Connect"}
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              {/* Exam Attempts */}
-              <section>
-                <h2 className="text-sm font-bold mb-1 text-gray-900">Exam Attempts</h2>
-                <p className="text-sm text-gray-600">
-                  You have 5 attempts per track. Use them wisely to showcase your skills.
-                </p>
-              </section>
-            </>
-          )}
-        </div>
       </div>
-    </div>
+    </ProfileErrorBoundary>
   );
 }

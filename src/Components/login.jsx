@@ -79,9 +79,8 @@ const Login = () => {
         const userId = data.id || data.userId || data.companyId;
         const userRole =
           data.role || data.userRole || (accountType === "user" ? "JobSeeker" : "Employer");
-          const profileId = data.profileId;
-          console.log("profileId",profileId)
-          localStorage.setItem("profileId",profileId)
+        const profileId = data.profileId;
+
         if (!userId) throw new Error("Invalid response: Missing id or companyId");
 
         const validRoles = ["JobSeeker", "Employer", "Company"];
@@ -117,7 +116,7 @@ const Login = () => {
           }
         }
 
-        if (finalRole === "Employer" ||finalRole === "Company") {
+        if (finalRole === "Company") {
           navigate("/companydashboard");
         } else {
           navigate("/home");

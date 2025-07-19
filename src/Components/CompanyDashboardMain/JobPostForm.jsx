@@ -218,8 +218,8 @@ export default function JobPostForm({ refreshJobs }) {
             case "description":
                 if (!value.trim()) {
                     fieldErrors.description = "Task Description is required";
-                } else if (value.trim().length < 20 || value.trim().length > 2000) {
-                    fieldErrors.description = "Task Description must be between 20 and 2,000 characters";
+                } else if (value.trim().length < 10 || value.trim().length > 2000) {
+                    fieldErrors.description = "Task Description must be between 10 and 2,000 characters";
                 } else {
                     delete fieldErrors.description;
                 }
@@ -227,8 +227,8 @@ export default function JobPostForm({ refreshJobs }) {
             case "requirements":
                 if (!value.trim()) {
                     fieldErrors.requirements = "Task Requirements is required";
-                } else if (value.trim().length < 20 || value.trim().length > 2000) {
-                    fieldErrors.requirements = "Task Requirements must be between 20 and 2,000 characters";
+                } else if (value.trim().length < 10 || value.trim().length > 2000) {
+                    fieldErrors.requirements = "Task Requirements must be between 10 and 2,000 characters";
                 } else {
                     delete fieldErrors.requirements;
                 }
@@ -236,8 +236,8 @@ export default function JobPostForm({ refreshJobs }) {
             case "deliverables":
                 if (!value.trim()) {
                     fieldErrors.deliverables = "Task Deliverables is required";
-                } else if (value.trim().length < 20 || value.trim().length > 2000) {
-                    fieldErrors.deliverables = "Task Deliverables must be between 20 and 2,000 characters";
+                } else if (value.trim().length < 10 || value.trim().length > 2000) {
+                    fieldErrors.deliverables = "Task Deliverables must be between 10 and 2,000 characters";
                 } else {
                     delete fieldErrors.deliverables;
                 }

@@ -12,28 +12,18 @@ export default function JobDetails() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [hasApplied, setHasApplied] = useState(() => localStorage.getItem('applicationId') ? true : false);
-  const [applicationId, setApplicationId] = useState(() => localStorage.getItem('applicationId') || null);
-  const [applicationLoading, setApplicationLoading] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [applicationId, setApplicationId] = useState(null);
 
   const userId = localStorage.getItem('userId');
   const authToken = localStorage.getItem('authToken');
 
   useEffect(() => {
-    let isMounted = true;
-    if (!authToken || !userId) {
-      if (isMounted) {
-        setError('Please log in to view job details.');
-        navigate('/login');
-      }
-      return;
-    }
-
     setLoading(true);
     fetch(`http://fit4job.runasp.net/api/Jobs/${id}`, {
       headers: {
         accept: 'text/plain',
-        Authorization: `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken || ''}`,
       },
     })
       .then((res) => {
@@ -41,84 +31,57 @@ export default function JobDetails() {
         return res.json();
       })
       .then((data) => {
-        if (isMounted && data?.success && data.data) {
+        if (data.success && data.data) {
           setJob(data.data);
         } else {
-          throw new Error(data?.message || 'Invalid job data.');
+          throw new Error(data.message || 'Invalid job data.');
         }
       })
       .catch((err) => {
-        if (isMounted) setError('Error fetching job details: ' + err.message);
+        setError('Error fetching job details: ' + err.message);
       })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    return () => { isMounted = false; };
-  }, [id, authToken, navigate, userId]);
+      .finally(() => setLoading(false));
+  }, [id, authToken]);
 
   useEffect(() => {
-    let isMounted = true;
-    if (!authToken || !userId || !id) {
-      if (isMounted) {
-        setHasApplied(false);
-        setApplicationId(null);
-        localStorage.removeItem('applicationId');
-      }
-      return;
-    }
-
-    setApplicationLoading(true);
-    fetch(`http://fit4job.runasp.net/api/JobApplications/job/${id}/user/${userId}`, {
-      headers: {
-        accept: 'text/plain',
-        Authorization: `Bearer ${authToken}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to check application status.');
-        return res.json();
+    if (userId && id && authToken) {
+      fetch(`http://fit4job.runasp.net/api/JobApplications/job/${id}/user/${userId}`, {
+        headers: {
+          accept: 'text/plain',
+          Authorization: `Bearer ${authToken}`,
+        },
       })
-      .then((result) => {
-        console.log('Application status response:', result); // Debug log
-        if (isMounted && result?.success && result.data && Array.isArray(result.data)) {
-          const currentApplication = result.data.find(
-            (application) => application.jobId === parseInt(id) && application.userId === parseInt(userId)
-          );
-          if (currentApplication) {
-            if (isMounted) {
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to check application status.');
+          return res.json();
+        })
+        .then((result) => {
+          if (result.success && result.data && result.data.length > 0) {
+            const currentApplication = result.data.find(
+              (application) =>
+                application.jobId === parseInt(id) &&
+                application.userId === parseInt(userId)
+            );
+
+            if (currentApplication) {
               setHasApplied(true);
               setApplicationId(currentApplication.id);
-              localStorage.setItem('applicationId', currentApplication.id);
-            }
-          } else {
-            if (isMounted) {
+              
+            } else {
               setHasApplied(false);
               setApplicationId(null);
               localStorage.removeItem('applicationId');
             }
-          }
-        } else {
-          if (isMounted) {
+          } else {
             setHasApplied(false);
             setApplicationId(null);
             localStorage.removeItem('applicationId');
           }
-        }
-      })
-      .catch((err) => {
-        console.error('Error checking application status:', err);
-        if (isMounted) {
-          setHasApplied(false);
-          setApplicationId(null);
-          localStorage.removeItem('applicationId');
-        }
-      })
-      .finally(() => {
-        if (isMounted) setApplicationLoading(false);
-      });
-
-    return () => { isMounted = false; };
+        })
+        .catch((err) => {
+          console.error('Error checking application status:', err);
+        });
+    }
   }, [userId, id, authToken]);
 
   const handleApplyNow = async () => {
@@ -146,6 +109,7 @@ export default function JobDetails() {
       appliedAt: new Date().toISOString(),
     };
 
+
     try {
       const response = await fetch('http://fit4job.runasp.net/api/JobApplications', {
         method: 'POST',
@@ -158,28 +122,21 @@ export default function JobDetails() {
       });
 
       const result = await response.json();
-      console.log('Apply response:', result); // Debug log
 
-      if (response.ok && result?.success) {
+      if (response.ok && result.success) {
         setSuccess('Application submitted successfully!');
         setHasApplied(true);
+
         if (result.data?.id) {
           setApplicationId(result.data.id);
-          localStorage.setItem('applicationId', result.data.id);
-          console.log("Application ID stored:", result.data.id);
+          localStorage.setItem('applicationId', result.data.id); 
+          console.log("first",result.data.id)// ✅ خزن بعد التقديم
         }
       } else {
-        if (result.message === 'You have already applied for this job.') {
-          setHasApplied(true); // Ensure hasApplied is set to true on this error
-          setApplicationId(localStorage.getItem('applicationId') || null);
-          setError(result.message); // Show the error but keep the button disabled
-        } else {
-          setError(result.message || 'Failed to submit application.');
-        }
+        setError(result.message || 'Failed to submit application.');
       }
     } catch (err) {
       setError('Network error: Could not submit application. ' + err.message);
-      setHasApplied(false);
     } finally {
       setLoading(false);
     }
@@ -206,7 +163,7 @@ export default function JobDetails() {
     3: 'On-site',
   };
 
-  if (loading || (applicationLoading && !hasApplied)) {
+  if (loading) {
     return <div className="p-10 text-center text-gray-600 text-lg">Loading...</div>;
   }
 
@@ -219,14 +176,15 @@ export default function JobDetails() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 ">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl">
       {/* Header */}
-      <div className="p-6 bg-gray-50 shadow-md">
-        <div className="bg-white p-4 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-800">{job.title || 'Loading...'}</h2>
+      <div className="bg-gray-50 shadow-md rounded-lg overflow-hidden">
+        <div className="bg-white p-6">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">{job.title}</h2>
         </div>
         <JopNav id={id} />
       </div>
+
       {/* Success/Error Messages */}
       {success && (
         <div className="mt-4 p-4 bg-green-100 text-green-800 rounded-lg flex items-center">
@@ -250,14 +208,14 @@ export default function JobDetails() {
           <div className="flex items-center">
             <span className="w-40 text-gray-600 font-medium">Career Level:</span>
             <span className="flex items-center gap-2 text-gray-900">
-              <img src={alerBlue} alt="Career Level" className="w-4 h-4" onError={(e) => { e.target.style.display = 'none'; }} />
+              <img src={alerBlue} alt="Career Level" className="w-4 h-4" />
               Experienced (Non-Manager)
             </span>
           </div>
           <div className="flex items-center">
             <span className="w-40 text-gray-600 font-medium">Education Level:</span>
             <span className="flex items-center gap-2 text-gray-900">
-              <img src={right} alt="Education Level" className="w-4 h-4" onError={(e) => { e.target.style.display = 'none'; }} />
+              <img src={right} alt="Education Level" className="w-4 h-4" />
               {educationLevels[job.educationLevel] || 'Not specified'}
             </span>
           </div>
@@ -268,14 +226,14 @@ export default function JobDetails() {
           <div className="flex items-center">
             <span className="w-40 text-gray-600 font-medium">Job Type:</span>
             <span className="flex items-center gap-2 text-gray-900">
-              <img src={right} alt="Job Type" className="w-4 h-4" onError={(e) => { e.target.style.display = 'none'; }} />
+              <img src={right} alt="Job Type" className="w-4 h-4" />
               {jobTypes[job.jobType] || 'Not specified'}
             </span>
           </div>
           <div className="flex items-center">
             <span className="w-40 text-gray-600 font-medium">Work Location:</span>
             <span className="flex items-center gap-2 text-gray-900">
-              <img src={right} alt="Work Location" className="w-4 h-4" onError={(e) => { e.target.style.display = 'none'; }} />
+              <img src={right} alt="Work Location" className="w-4 h-4" />
               {workLocationTypes[job.workLocationType] || 'Not specified'}
             </span>
           </div>
@@ -287,7 +245,7 @@ export default function JobDetails() {
           <div className="flex flex-wrap gap-2">
             {(job.skills || []).map((skill, index) => (
               <span key={index} className="inline-flex items-center gap-2 bg-gray-200 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">
-                <img src={alert} alt={skill} className="w-4 h-4" onError={(e) => { e.target.style.display = 'none'; }} />
+                <img src={alert} alt={skill} className="w-4 h-4" />
                 {skill}
               </span>
             ))}
