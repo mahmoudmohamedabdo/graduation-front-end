@@ -12,8 +12,7 @@ export default function JobDetails() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [hasApplied, setHasApplied] = useState(() => localStorage.getItem('applicationId') ? true : false);
-  const [applicationId, setApplicationId] = useState(() => localStorage.getItem('applicationId') || null);
+  const [hasApplied, setHasApplied] = useState(null); // null means not checked yet
   const [applicationLoading, setApplicationLoading] = useState(false);
 
   const userId = localStorage.getItem('userId');
@@ -57,19 +56,28 @@ export default function JobDetails() {
     return () => { isMounted = false; };
   }, [id, authToken, navigate, userId]);
 
+  // استخدام endpoint isUserApplied للتحقق من حالة التقديم من الـ backend
   useEffect(() => {
     let isMounted = true;
     if (!authToken || !userId || !id) {
       if (isMounted) {
         setHasApplied(false);
-        setApplicationId(null);
-        localStorage.removeItem('applicationId');
       }
       return;
     }
 
+    // التحقق السريع من localStorage أولاً (للتحميل السريع)
+    const cachedApplicationId = localStorage.getItem(`applicationId_${id}`);
+    if (cachedApplicationId) {
+      console.log('Found cached application ID for job', id, ':', cachedApplicationId);
+      setHasApplied(true);
+      // لا نحتاج لانتظار الـ backend إذا كان لدينا cache صحيح
+      setApplicationLoading(false);
+      return; // نخرج مبكراً إذا كان لدينا cache
+    }
+
     setApplicationLoading(true);
-    fetch(`http://fit4job.runasp.net/api/JobApplications/job/${id}/user/${userId}`, {
+    fetch(`http://fit4job.runasp.net/api/JobApplications/isUserApplied?userId=${userId}&jobId=${id}`, {
       headers: {
         accept: 'text/plain',
         Authorization: `Bearer ${authToken}`,
@@ -80,38 +88,34 @@ export default function JobDetails() {
         return res.json();
       })
       .then((result) => {
-        console.log('Application status response:', result); // Debug log
-        if (isMounted && result?.success && result.data && Array.isArray(result.data)) {
-          const currentApplication = result.data.find(
-            (application) => application.jobId === parseInt(id) && application.userId === parseInt(userId)
-          );
-          if (currentApplication) {
-            if (isMounted) {
-              setHasApplied(true);
-              setApplicationId(currentApplication.id);
-              localStorage.setItem('applicationId', currentApplication.id);
-            }
+        console.log('Backend isUserApplied response:', result); // Debug log
+        if (isMounted) {
+          // استخدام القيمة من الـ backend مباشرة
+          const backendHasApplied = result?.success === true || (result?.data && result.data.id);
+          
+          console.log('Backend says user has applied:', backendHasApplied);
+          setHasApplied(backendHasApplied);
+          
+          if (backendHasApplied && result.data?.id) {
+            localStorage.setItem(`applicationId_${id}`, result.data.id);
+            console.log('Application ID from backend for job', id, ':', result.data.id);
           } else {
-            if (isMounted) {
-              setHasApplied(false);
-              setApplicationId(null);
-              localStorage.removeItem('applicationId');
-            }
-          }
-        } else {
-          if (isMounted) {
-            setHasApplied(false);
-            setApplicationId(null);
-            localStorage.removeItem('applicationId');
+            localStorage.removeItem(`applicationId_${id}`);
           }
         }
       })
       .catch((err) => {
-        console.error('Error checking application status:', err);
+        console.error('Error checking application status from backend:', err);
         if (isMounted) {
-          setHasApplied(false);
-          setApplicationId(null);
-          localStorage.removeItem('applicationId');
+          // في حالة الخطأ، نعتمد على localStorage إذا كان موجوداً
+          const cachedApplicationId = localStorage.getItem(`applicationId_${id}`);
+          if (cachedApplicationId) {
+            console.log('Using cached application status for job', id, 'due to backend error');
+            setHasApplied(true);
+          } else {
+            setHasApplied(false);
+            localStorage.removeItem(`applicationId_${id}`);
+          }
         }
       })
       .finally(() => {
@@ -136,6 +140,9 @@ export default function JobDetails() {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    
+    // Add a small delay to show loading state
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const requestBody = {
       userId: parseInt(userId),
@@ -161,25 +168,55 @@ export default function JobDetails() {
       console.log('Apply response:', result); // Debug log
 
       if (response.ok && result?.success) {
-        setSuccess('Application submitted successfully!');
+        setSuccess('Application submitted successfully! 🎉');
         setHasApplied(true);
         if (result.data?.id) {
-          setApplicationId(result.data.id);
-          localStorage.setItem('applicationId', result.data.id);
-          console.log("Application ID stored:", result.data.id);
+          localStorage.setItem(`applicationId_${id}`, result.data.id);
+          console.log("Application ID stored for job", id, ":", result.data.id);
         }
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          setSuccess(null);
+        }, 5000);
+        
+        // تحديث حالة التقديم من قاعدة البيانات بعد التقديم الناجح
+        setTimeout(async () => {
+          try {
+            const checkResponse = await fetch(`http://fit4job.runasp.net/api/JobApplications/isUserApplied?userId=${userId}&jobId=${id}`, {
+              headers: {
+                accept: 'text/plain',
+                Authorization: `Bearer ${authToken}`,
+              },
+            });
+            if (checkResponse.ok) {
+              const checkResult = await checkResponse.json();
+              console.log('Post-application backend check:', checkResult);
+              const backendHasApplied = checkResult?.success === true || (checkResult?.data && checkResult.data.id);
+              setHasApplied(backendHasApplied);
+              if (backendHasApplied && checkResult.data?.id) {
+                localStorage.setItem(`applicationId_${id}`, checkResult.data.id);
+              }
+            }
+          } catch (err) {
+            console.error('Error updating application status from backend:', err);
+          }
+        }, 1000);
       } else {
         if (result.message === 'You have already applied for this job.') {
-          setHasApplied(true); // Ensure hasApplied is set to true on this error
-          setApplicationId(localStorage.getItem('applicationId') || null);
-          setError(result.message); // Show the error but keep the button disabled
+          // إذا قال الـ backend أن المستخدم قد تقدم بالفعل، نحدث الحالة
+          setHasApplied(true);
+          // نحفظ في localStorage حتى لو لم نحصل على applicationId
+          localStorage.setItem(`applicationId_${id}`, 'applied');
+          setError(result.message);
+          console.log('Backend confirmed user has already applied for job', id);
         } else {
           setError(result.message || 'Failed to submit application.');
         }
       }
     } catch (err) {
       setError('Network error: Could not submit application. ' + err.message);
-      setHasApplied(false);
+      // لا نغير hasApplied هنا لأننا نريد الاحتفاظ بالقيمة من الـ backend
+      console.error('Network error during application for job', id, ':', err);
     } finally {
       setLoading(false);
     }
@@ -206,7 +243,8 @@ export default function JobDetails() {
     3: 'On-site',
   };
 
-  if (loading || (applicationLoading && !hasApplied)) {
+  // عرض شاشة تحميل فقط عند تحميل بيانات الوظيفة أو عند عدم وجود بيانات
+  if (loading || !job) {
     return <div className="p-10 text-center text-gray-600 text-lg">Loading...</div>;
   }
 
@@ -229,13 +267,35 @@ export default function JobDetails() {
       </div>
       {/* Success/Error Messages */}
       {success && (
-        <div className="mt-4 p-4 bg-green-100 text-green-800 rounded-lg flex items-center">
-          ✅ {success}
+        <div className="mt-4 p-4 bg-green-100 border border-green-300 text-green-800 rounded-lg flex items-center gap-2 shadow-sm animate-pulse">
+          <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          <span className="font-medium">{success}</span>
+          <button 
+            onClick={() => setSuccess(null)}
+            className="ml-auto text-green-600 hover:text-green-800"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
       )}
       {error && (
-        <div className="mt-4 p-4 bg-red-100 text-red-800 rounded-lg flex items-center">
-          ❌ {error}
+        <div className="mt-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded-lg flex items-center gap-2 shadow-sm">
+          <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          <span className="font-medium">{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="ml-auto text-red-600 hover:text-red-800"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
       )}
 
@@ -309,15 +369,59 @@ export default function JobDetails() {
 
       {/* Apply Button */}
       <div className="flex justify-end mt-6 mb-10">
-        <button
-          className={`py-3 px-8 rounded-full text-white font-medium shadow-lg transition duration-300 ${
-            loading || hasApplied ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+        <div className="relative">
+                  <button
+          className={`py-3 px-8 rounded-full text-white font-medium shadow-lg transition-all duration-300 ${
+            loading 
+              ? 'bg-blue-500 cursor-not-allowed opacity-75 animate-pulse' // Blue during loading with pulse
+              : hasApplied === true
+              ? 'bg-gray-500 cursor-not-allowed opacity-90 shadow-md' // Gray when already applied (from backend)
+              : applicationLoading || hasApplied === null
+              ? 'bg-gray-400 cursor-not-allowed opacity-75' // Gray when checking status
+              : 'bg-green-600 hover:bg-green-700 hover:shadow-xl transform hover:scale-105 active:scale-95'
           }`}
           onClick={handleApplyNow}
-          disabled={loading || hasApplied}
+          disabled={loading || hasApplied === true || applicationLoading || hasApplied === null}
+          title={
+            loading ? 'Submitting application...' 
+            : hasApplied === true ? 'You have already applied for this job (confirmed by backend)'
+            : applicationLoading || hasApplied === null ? 'Checking application status...'
+            : 'Click to apply for this job'
+          }
         >
-          {loading ? 'Applying...' : hasApplied ? 'Applied' : 'Apply Now'}
-        </button>
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="font-semibold">Applying...</span>
+              </span>
+                      ) : hasApplied === true ? (
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold">Already Applied</span>
+            </span>
+                      ) : applicationLoading || hasApplied === null ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="font-semibold">Checking...</span>
+            </span>
+                    ) : (
+            <span className="font-semibold">Apply Now</span>
+          )}
+          </button>
+          {hasApplied && (
+            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+              ✓ Already applied
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

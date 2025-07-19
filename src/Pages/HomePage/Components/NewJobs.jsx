@@ -14,7 +14,7 @@ export default function NewJops({ job }) {
   const skills = requirements.split(/·|,/).filter((skill) => skill.trim()).slice(0, 6);
 
   return (
-    <div className="w-72 h-[380px] rounded-xl overflow-hidden shadow-md bg-base-100 flex flex-col">
+    <div className="w-72 h-[380px] rounded-xl overflow-hidden shadow-md bg-base-100 flex flex-col job-card-transition job-card-hover">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#298DE0] to-[#006AC2] p-4 rounded-t-xl">
         <h2 className="text-xl font-bold text-white mb-1">{title}</h2>
@@ -40,7 +40,7 @@ export default function NewJops({ job }) {
         {/* Apply Button at the bottom */}
         <div className="text-center mt-4">
           <button
-            className="btn w-full rounded-full text-white bg-[#1C79EA]"
+            className="btn w-full rounded-full text-white bg-[#1C79EA] hover:bg-[#1565C0] transition-colors duration-200"
             onClick={openJopDetailsPage}
           >
             View Details
