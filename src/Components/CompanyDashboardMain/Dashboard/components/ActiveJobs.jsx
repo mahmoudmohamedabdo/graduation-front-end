@@ -12,7 +12,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
   const [dropdownOpen, setDropdownOpen] = useState(null);
   const [taskDropdownOpen, setTaskDropdownOpen] = useState(null);
   const [submissionsDropdownOpen, setSubmissionsDropdownOpen] = useState(null);
-  const [applicationsDropdownOpen, setApplicationsDropdownOpen] = useState(null);
   const [taskSubmissions, setTaskSubmissions] = useState({});
   const [jobApplications, setJobApplications] = useState({});
   const [isSubmissionsLoading, setIsSubmissionsLoading] = useState({});
@@ -70,7 +69,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
         setDropdownOpen(null);
         setTaskDropdownOpen(null);
         setSubmissionsDropdownOpen(null);
-        setApplicationsDropdownOpen(null);
       }
     };
 
@@ -306,67 +304,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     }
   };
 
-  const fetchJobApplications = async (jobId) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      setError('Authentication token is missing. Please log in again.');
-      navigate('/login');
-      return;
-    }
-
-    setIsApplicationsLoading((prev) => ({ ...prev, [jobId]: true }));
-    setApplicationError((prev) => ({ ...prev, [jobId]: null }));
-
-    try {
-      const response = await axios.get(
-        `http://fit4job.runasp.net/api/JobApplications/job/${jobId}?t=${Date.now()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            Accept: 'text/plain',
-          },
-        }
-      );
-
-      if (response.data.success) {
-        const applications = Array.isArray(response.data.data)
-          ? response.data.data
-          : response.data.data
-          ? [response.data.data]
-          : [];
-        setJobApplications((prev) => ({
-          ...prev,
-          [jobId]: applications,
-        }));
-        if (applications.length === 0) {
-          setApplicationError((prev) => ({
-            ...prev,
-            [jobId]: 'No applications found for this job.',
-          }));
-        }
-      } else {
-        setApplicationError((prev) => ({
-          ...prev,
-          [jobId]: response.data.message || 'No applications found.',
-        }));
-        setJobApplications((prev) => ({ ...prev, [jobId]: [] }));
-      }
-    } catch (err) {
-      let errorMessage = err.response?.data?.message || `Failed to fetch applications: ${err.message}`;
-      if (err.response?.status === 401) {
-        errorMessage = 'Unauthorized. Please log in again or check your permissions.';
-        navigate('/login');
-      }
-      setApplicationError((prev) => ({
-        ...prev,
-        [jobId]: errorMessage,
-      }));
-      setJobApplications((prev) => ({ ...prev, [jobId]: [] }));
-    } finally {
-      setIsApplicationsLoading((prev) => ({ ...prev, [jobId]: false }));
-    }
-  };
-
   const handleAddNew = () => navigate('/job-quiz/0');
 
   const handleEdit = (jobId) => {
@@ -408,14 +345,12 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     setDropdownOpen(dropdownOpen === jobId ? null : jobId);
     setTaskDropdownOpen(null);
     setSubmissionsDropdownOpen(null);
-    setApplicationsDropdownOpen(null);
   };
 
   const toggleTaskDropdown = (jobId) => {
     setTaskDropdownOpen(taskDropdownOpen === jobId ? null : jobId);
     setDropdownOpen(null);
     setSubmissionsDropdownOpen(null);
-    setApplicationsDropdownOpen(null);
   };
 
   const toggleSubmissionsDropdown = (jobId) => {
@@ -425,17 +360,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
     setSubmissionsDropdownOpen(submissionsDropdownOpen === jobId ? null : jobId);
     setDropdownOpen(null);
     setTaskDropdownOpen(null);
-    setApplicationsDropdownOpen(null);
-  };
-
-  const toggleApplicationsDropdown = (jobId) => {
-    if (applicationsDropdownOpen !== jobId) {
-      fetchJobApplications(jobId);
-    }
-    setApplicationsDropdownOpen(applicationsDropdownOpen === jobId ? null : jobId);
-    setDropdownOpen(null);
-    setTaskDropdownOpen(null);
-    setSubmissionsDropdownOpen(null);
   };
 
   const toggleTaskDetails = (jobId) => {
@@ -571,18 +495,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
                         </span>
                       )}
                     </button>
-                    <button
-                      className="flex items-center bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs hover:bg-purple-200 transition-colors duration-200"
-                      onClick={() => toggleApplicationsDropdown(job.id)}
-                    >
-                      <Users className="w-4 h-4 mr-1" />
-                      Applications
-                      {jobApplications[job.id]?.length > 0 && (
-                        <span className="ml-2 bg-purple-500 text-white text-xs rounded-full px-2 py-0.5">
-                          {jobApplications[job.id].length}
-                        </span>
-                      )}
-                    </button>
                     <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
                       Active
                     </span>
@@ -700,79 +612,6 @@ export default function ActiveJobs({ refreshKey, refreshJobs }) {
                             <button
                               className="mt-2 text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors duration-200"
                               onClick={() => fetchTaskSubmissions(job.id)}
-                            >
-                              Refresh
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {applicationsDropdownOpen === job.id && (
-                      <div
-                        ref={applicationsDropdownRef}
-                        className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-72 max-h-96 overflow-y-auto transition-all duration-200 ease-in-out"
-                      >
-                        {isApplicationsLoading[job.id] ? (
-                          <div className="px-4 py-3 text-sm text-gray-600 flex items-center">
-                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-600 mr-2"></div>
-                            Loading applications...
-                          </div>
-                        ) : applicationError[job.id] ? (
-                          <div className="px-4 py-3">
-                            <p className="text-sm text-red-600">{applicationError[job.id]}</p>
-                            <button
-                              className="mt-2 text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors duration-200"
-                              onClick={() => fetchJobApplications(job.id)}
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        ) : jobApplications[job.id]?.length > 0 ? (
-                          jobApplications[job.id].map((application) => (
-                            <div
-                              key={application.id}
-                              className="px-4 py-3 text-sm text-gray-700 border-b last:border-b-0 hover:bg-gray-50 transition-colors duration-200"
-                            >
-                              <p className="font-medium">Application ID: {application.id}</p>
-                              <p>User ID: {application.userId}</p>
-                              <p>
-                                Applied:{' '}
-                                {new Date(application.appliedAt).toLocaleDateString('en-GB', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })}
-                              </p>
-                              <p>
-                                Status:{' '}
-                                <span
-                                  className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                    application.status === 1
-                                      ? 'bg-green-100 text-green-700'
-                                      : application.status === 2
-                                      ? 'bg-red-100 text-red-700'
-                                      : application.status === 3
-                                      ? 'bg-yellow-100 text-yellow-700'
-                                      : 'bg-gray-100 text-gray-700'
-                                  }`}
-                                >
-                                  {statusMap[application.status] || 'Unknown'}
-                                </span>
-                              </p>
-                              {application.examAttemptId !== 0 && (
-                                <p>Exam Attempt ID: {application.examAttemptId}</p>
-                              )}
-                              {application.taskSubmissionId !== 0 && (
-                                <p>Task Submission ID: {application.taskSubmissionId}</p>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="px-4 py-3">
-                            <p className="text-sm text-gray-600">No applications found</p>
-                            <button
-                              className="mt-2 text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors duration-200"
-                              onClick={() => fetchJobApplications(job.id)}
                             >
                               Refresh
                             </button>
