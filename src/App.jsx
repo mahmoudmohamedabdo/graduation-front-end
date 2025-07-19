@@ -23,6 +23,8 @@ import "./App.css";
 import Login from "./Components/login";
 import Signup from "./Components/SignUp";
 import TrackManager from "./Components/Admin Dashboard/TrackManager";
+import AddExamQuestions from "./Pages/AddExamQuestions";
+import AddQuestionOptions from "./Pages/AddQuestionOptions";
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,6 +46,8 @@ function App() {
           <Route path="/quiz/:id" element={<JobQuizPage />} />
           <Route path="/verify" element={<VerifyCode />} />
           <Route path="/trackManager" element={<TrackManager/>} />
+          <Route path="/admin/exams/:examId/add-questions" element={<AddExamQuestions />} />
+          <Route path="/admin/questions/:questionId/add-options" element={<AddQuestionOptions />} />
 
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />

@@ -38,6 +38,22 @@ export default function JobPostForm({ refreshJobs }) {
     const [taskSuccess, setTaskSuccess] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [examData, setExamData] = useState({
+        companyId: profileId ? parseInt(profileId) : null,
+        jobId: id || 0, // Will be updated after job creation
+        title: "",
+        description: "",
+        instructions: "",
+        durationMinutes: "",
+        totalScore: "",
+        passingScore: "",
+        isActive: true,
+        showResultsImmediately: true,
+    });
+    const [examErrors, setExamErrors] = useState({});
+    const [isExamSubmitting, setIsExamSubmitting] = useState(false);
+    const [examSuccess, setExamSuccess] = useState(false);
+    const [showExamForm, setShowExamForm] = useState(false);
 
     const jobTypeMap = {
         Freelance: 1,
@@ -114,6 +130,17 @@ export default function JobPostForm({ refreshJobs }) {
             fetchJob();
         }
     }, [id, profileId]);
+
+    // Update examData jobId/companyId after job creation
+    useEffect(() => {
+        if ((assessmentOption === "Add Quiz" || assessmentOption === "Add Quiz and Task") && (id && id !== "0")) {
+            setExamData((prev) => ({
+                ...prev,
+                jobId: id,
+                companyId: profileId ? parseInt(profileId) : null,
+            }));
+        }
+    }, [assessmentOption, id, profileId]);
 
     // Handle job form input changes
     const handleInputChange = (e) => {
@@ -271,6 +298,77 @@ export default function JobPostForm({ refreshJobs }) {
         setTaskErrors(fieldErrors);
     };
 
+    // Exam form input change
+    const handleExamInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setExamData((prev) => ({
+            ...prev,
+            [name]: type === "checkbox" ? checked : value,
+        }));
+        validateExamField(name, type === "checkbox" ? checked : value);
+    };
+
+    // Exam field validation
+    const validateExamField = (name, value) => {
+        let fieldErrors = { ...examErrors };
+        switch (name) {
+            case "title":
+                if (!value.trim()) fieldErrors.title = "Exam Title is required";
+                else if (value.length < 3 || value.length > 256) fieldErrors.title = "Title must be 3-256 chars";
+                else delete fieldErrors.title;
+                break;
+            case "description":
+                if (!value.trim()) fieldErrors.description = "Description is required";
+                else if (value.length < 10 || value.length > 2000) fieldErrors.description = "Description must be 10-2000 chars";
+                else delete fieldErrors.description;
+                break;
+            case "instructions":
+                if (!value.trim()) fieldErrors.instructions = "Instructions are required";
+                else if (value.length < 5 || value.length > 1000) fieldErrors.instructions = "Instructions must be 5-1000 chars";
+                else delete fieldErrors.instructions;
+                break;
+            case "durationMinutes":
+                if (!value) fieldErrors.durationMinutes = "Duration is required";
+                else if (!/^\d+$/.test(value) || parseInt(value) <= 0 || parseInt(value) > 1000) fieldErrors.durationMinutes = "Duration must be 1-1000 min";
+                else delete fieldErrors.durationMinutes;
+                break;
+            case "totalScore":
+                if (!value) fieldErrors.totalScore = "Total Score is required";
+                else if (!/^\d+$/.test(value) || parseInt(value) <= 0) fieldErrors.totalScore = "Total Score must be positive";
+                else delete fieldErrors.totalScore;
+                break;
+            case "passingScore":
+                if (!value) fieldErrors.passingScore = "Passing Score is required";
+                else if (!/^\d+$/.test(value) || parseInt(value) < 0) fieldErrors.passingScore = "Passing Score must be 0 or more";
+                else if (parseInt(value) > parseInt(examData.totalScore)) fieldErrors.passingScore = "Passing Score can't exceed Total Score";
+                else delete fieldErrors.passingScore;
+                break;
+            default:
+                break;
+        }
+        setExamErrors(fieldErrors);
+    };
+
+    // Validate all exam fields
+    const validateExamForm = () => {
+        const fieldErrors = {};
+        if (!examData.title.trim()) fieldErrors.title = "Exam Title is required";
+        else if (examData.title.length < 3 || examData.title.length > 256) fieldErrors.title = "Title must be 3-256 chars";
+        if (!examData.description.trim()) fieldErrors.description = "Description is required";
+        else if (examData.description.length < 10 || examData.description.length > 2000) fieldErrors.description = "Description must be 10-2000 chars";
+        if (!examData.instructions.trim()) fieldErrors.instructions = "Instructions are required";
+        else if (examData.instructions.length < 5 || examData.instructions.length > 1000) fieldErrors.instructions = "Instructions must be 5-1000 chars";
+        if (!examData.durationMinutes) fieldErrors.durationMinutes = "Duration is required";
+        else if (!/^\d+$/.test(examData.durationMinutes) || parseInt(examData.durationMinutes) <= 0 || parseInt(examData.durationMinutes) > 1000) fieldErrors.durationMinutes = "Duration must be 1-1000 min";
+        if (!examData.totalScore) fieldErrors.totalScore = "Total Score is required";
+        else if (!/^\d+$/.test(examData.totalScore) || parseInt(examData.totalScore) <= 0) fieldErrors.totalScore = "Total Score must be positive";
+        if (!examData.passingScore) fieldErrors.passingScore = "Passing Score is required";
+        else if (!/^\d+$/.test(examData.passingScore) || parseInt(examData.passingScore) < 0) fieldErrors.passingScore = "Passing Score must be 0 or more";
+        else if (parseInt(examData.passingScore) > parseInt(examData.totalScore)) fieldErrors.passingScore = "Passing Score can't exceed Total Score";
+        setExamErrors(fieldErrors);
+        return Object.keys(fieldErrors).length === 0;
+    };
+
     // Validate entire job form
     const validateForm = () => {
         const fieldErrors = {};
@@ -418,6 +516,7 @@ export default function JobPostForm({ refreshJobs }) {
                     setSuccess(true);
                     if (!isEditMode && result.data?.id) {
                         setTaskData((prev) => ({ ...prev, jobId: parseInt(result.data.id) }));
+                        setExamData((prev) => ({ ...prev, jobId: parseInt(result.data.id) }));
                     }
                     if (refreshJobs) {
                         refreshJobs();
@@ -436,14 +535,9 @@ export default function JobPostForm({ refreshJobs }) {
                             isActive: true,
                         });
                     }
-                    if (assessmentOption === "Add Task" || assessmentOption === "Add Quiz and Task") {
-                        if (!result.data?.id && !isEditMode) {
-                            throw new Error("Job ID not returned from server");
-                        }
-                        setShowTaskForm(true);
-                    } else {
-                        navigate("/companydashboard");
-                    }
+                    // بعد نجاح إنشاء الجوب، أظهر فورم التاسك فقط
+                    setShowTaskForm(true);
+                    setShowExamForm(false);
                 } else {
                     throw new Error(result.message || `Unknown error during job ${isEditMode ? "update" : "creation"}`);
                 }
@@ -520,10 +614,12 @@ export default function JobPostForm({ refreshJobs }) {
                         estimatedHours: "",
                     });
                     setShowTaskForm(false);
+                    // بعد نجاح إنشاء التاسك، أظهر فورم الامتحان فقط
+                    setShowExamForm(true);
                     if (refreshJobs) {
                         refreshJobs(); // Trigger refresh after task creation
                     }
-                    navigate("/companydashboard");
+                    // navigate("/companydashboard"); // تم التعليق حتى يظهر فورم الامتحان
                 } else {
                     throw new Error(result.message || "Unknown error during task creation");
                 }
@@ -535,6 +631,77 @@ export default function JobPostForm({ refreshJobs }) {
             }
         } else {
             setIsTaskSubmitting(false);
+        }
+    };
+
+    // Exam submit
+    const handleExamSubmit = async (e) => {
+        e.preventDefault();
+        setIsExamSubmitting(true);
+        setExamErrors({});
+        setExamSuccess(false);
+        if (validateExamForm()) {
+            try {
+                const payload = {
+                    companyId: profileId ? parseInt(profileId) : null,
+                    jobId: examData.jobId,
+                    title: examData.title,
+                    description: examData.description,
+                    instructions: examData.instructions,
+                    durationMinutes: parseInt(examData.durationMinutes),
+                    totalScore: parseInt(examData.totalScore),
+                    passingScore: parseInt(examData.passingScore),
+                    isActive: examData.isActive,
+                    showResultsImmediately: examData.showResultsImmediately,
+                };
+                const response = await fetch("http://fit4job.runasp.net/api/CompanyExams/create", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`,
+                    },
+                    body: JSON.stringify(payload),
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    const errorMessage = errorData.message || `Failed to create exam: ${response.statusText}`;
+                    if (errorData.errors) {
+                        const fieldErrors = {};
+                        Object.keys(errorData.errors).forEach((key) => {
+                            fieldErrors[key.toLowerCase()] = errorData.errors[key].join(", ");
+                        });
+                        setExamErrors(fieldErrors);
+                    }
+                    throw new Error(errorMessage);
+                }
+                const result = await response.json();
+                if (result.success) {
+                    setExamSuccess(true);
+                    setExamData({
+                        companyId: profileId ? parseInt(profileId) : null,
+                        jobId: examData.jobId,
+                        title: "",
+                        description: "",
+                        instructions: "",
+                        durationMinutes: "",
+                        totalScore: "",
+                        passingScore: "",
+                        isActive: true,
+                        showResultsImmediately: true,
+                    });
+                    setShowExamForm(false);
+                    if (refreshJobs) refreshJobs();
+                    navigate(`/admin/exams/${result.data.id}/add-questions`);
+                } else {
+                    throw new Error(result.message || "Unknown error during exam creation");
+                }
+            } catch (err) {
+                setExamErrors({ general: err.message });
+            } finally {
+                setIsExamSubmitting(false);
+            }
+        } else {
+            setIsExamSubmitting(false);
         }
     };
 
@@ -554,7 +721,8 @@ export default function JobPostForm({ refreshJobs }) {
                         </div>
                     )}
 
-                    {!showTaskForm ? (
+                    {/* منطق إظهار الفورمات حسب الخطوة الحالية */}
+                    {!showTaskForm && !showExamForm && (
                         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-5">
                             <div className="mb-3 sm:mb-4">
                                 <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2">
@@ -764,13 +932,17 @@ export default function JobPostForm({ refreshJobs }) {
                                 </button>
                             </div>
                         </form>
-                    ) : (
+                    )}
+                    {showTaskForm && !showExamForm && (
                         <form onSubmit={handleTaskSubmit} className="space-y-3 sm:space-y-4 md:space-y-5">
                             <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-3 sm:mb-4">Add Task</h3>
 
                             {taskErrors.general && <div className="text-red-500 mb-2 sm:mb-4">{taskErrors.general}</div>}
                             {taskSuccess && (
                                 <div className="text-green-500 mb-2 sm:mb-4">Task created successfully!</div>
+                            )}
+                            {isTaskSubmitting && (
+                                <div className="text-blue-500 mb-2 sm:mb-4">Task is being created...</div>
                             )}
 
                             <div className="mb-3 sm:mb-4">
@@ -920,6 +1092,163 @@ export default function JobPostForm({ refreshJobs }) {
                                     } w-full sm:w-auto`}
                                 >
                                     {isTaskSubmitting ? "Creating Task..." : "Create Task"}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                    {showExamForm && (
+                        <form onSubmit={handleExamSubmit} className="space-y-3 sm:space-y-4 md:space-y-5">
+                            <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-3 sm:mb-4">Add Exam</h3>
+                            {examErrors.general && <div className="text-red-500 mb-2 sm:mb-4">{examErrors.general}</div>}
+                            {examSuccess && (
+                                <div className="text-green-500 mb-2 sm:mb-4">Exam created successfully!</div>
+                            )}
+                            {isExamSubmitting && (
+                                <div className="text-blue-500 mb-2 sm:mb-4">Exam is being created...</div>
+                            )}
+                            <div className="mb-3 sm:mb-4">
+                                <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                                    Exam Title * (3-256 characters)
+                                </label>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    value={examData.title}
+                                    onChange={handleExamInputChange}
+                                    onBlur={(e) => validateExamField("title", e.target.value)}
+                                    placeholder="Exam Title"
+                                    className={`w-full rounded-md px-2 sm:px-3 md:px-4 py-1 sm:py-2 text-xs sm:text-sm md:text-base bg-[#F7F7F7] text-gray-900 border ${examErrors.title ? "border-red-500" : "border-gray-200"}`}
+                                    required
+                                />
+                                {examErrors.title && <div className="text-red-500 text-xs sm:text-sm mt-1">{examErrors.title}</div>}
+                                <div className="text-xs sm:text-sm text-gray-500 mt-1">{examData.title.length}/256 characters</div>
+                            </div>
+                            <div className="mb-3 sm:mb-4">
+                                <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                                    Description * (10-2,000 characters)
+                                </label>
+                                <textarea
+                                    name="description"
+                                    value={examData.description}
+                                    onChange={handleExamInputChange}
+                                    onBlur={(e) => validateExamField("description", e.target.value)}
+                                    rows="3"
+                                    placeholder="Exam Description"
+                                    className={`w-full border rounded-md px-2 sm:px-3 md:px-4 py-1 sm:py-2 text-xs sm:text-sm md:text-base bg-[#f7f7f7] text-gray-900 ${examErrors.description ? "border-red-500" : "border-gray-200"}`}
+                                    required
+                                />
+                                {examErrors.description && <div className="text-red-500 text-xs sm:text-sm mt-1">{examErrors.description}</div>}
+                                <div className="text-xs sm:text-sm text-gray-500 mt-1">{examData.description.length}/2,000 characters</div>
+                            </div>
+                            <div className="mb-3 sm:mb-4">
+                                <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                                    Instructions * (5-1000 characters)
+                                </label>
+                                <textarea
+                                    name="instructions"
+                                    value={examData.instructions}
+                                    onChange={handleExamInputChange}
+                                    onBlur={(e) => validateExamField("instructions", e.target.value)}
+                                    rows="2"
+                                    placeholder="Exam Instructions"
+                                    className={`w-full border rounded-md px-2 sm:px-3 md:px-4 py-1 sm:py-2 text-xs sm:text-sm md:text-base bg-[#f7f7f7] text-gray-900 ${examErrors.instructions ? "border-red-500" : "border-gray-200"}`}
+                                    required
+                                />
+                                {examErrors.instructions && <div className="text-red-500 text-xs sm:text-sm mt-1">{examErrors.instructions}</div>}
+                                <div className="text-xs sm:text-sm text-gray-500 mt-1">{examData.instructions.length}/1,000 characters</div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                                <div>
+                                    <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                                        Duration (minutes) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="durationMinutes"
+                                        value={examData.durationMinutes}
+                                        onChange={handleExamInputChange}
+                                        onBlur={(e) => validateExamField("durationMinutes", e.target.value)}
+                                        placeholder="60"
+                                        className={`w-full border rounded-md px-2 sm:px-3 md:px-4 py-1 sm:py-2 text-xs sm:text-sm md:text-base text-gray-900 bg-[#f7f7f7] ${examErrors.durationMinutes ? "border-red-500" : "border-gray-200"}`}
+                                        required
+                                    />
+                                    {examErrors.durationMinutes && <div className="text-red-500 text-xs sm:text-sm mt-1">{examErrors.durationMinutes}</div>}
+                                </div>
+                                <div>
+                                    <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                                        Total Score *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="totalScore"
+                                        value={examData.totalScore}
+                                        onChange={handleExamInputChange}
+                                        onBlur={(e) => validateExamField("totalScore", e.target.value)}
+                                        placeholder="100"
+                                        className={`w-full border rounded-md px-2 sm:px-3 md:px-4 py-1 sm:py-2 text-xs sm:text-sm md:text-base text-gray-900 bg-[#f7f7f7] ${examErrors.totalScore ? "border-red-500" : "border-gray-200"}`}
+                                        required
+                                    />
+                                    {examErrors.totalScore && <div className="text-red-500 text-xs sm:text-sm mt-1">{examErrors.totalScore}</div>}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                                <div>
+                                    <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                                        Passing Score *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="passingScore"
+                                        value={examData.passingScore}
+                                        onChange={handleExamInputChange}
+                                        onBlur={(e) => validateExamField("passingScore", e.target.value)}
+                                        placeholder="60"
+                                        className={`w-full border rounded-md px-2 sm:px-3 md:px-4 py-1 sm:py-2 text-xs sm:text-sm md:text-base text-gray-900 bg-[#f7f7f7] ${examErrors.passingScore ? "border-red-500" : "border-gray-200"}`}
+                                        required
+                                    />
+                                    {examErrors.passingScore && <div className="text-red-500 text-xs sm:text-sm mt-1">{examErrors.passingScore}</div>}
+                                </div>
+                                <div className="flex flex-col gap-2 mt-2">
+                                    <label className="inline-flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            name="isActive"
+                                            checked={examData.isActive}
+                                            onChange={handleExamInputChange}
+                                            className="mr-2"
+                                        />
+                                        Active
+                                    </label>
+                                    <label className="inline-flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            name="showResultsImmediately"
+                                            checked={examData.showResultsImmediately}
+                                            onChange={handleExamInputChange}
+                                            className="mr-2"
+                                        />
+                                        Show Results Immediately
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowTaskForm(false);
+                                        setExamErrors({});
+                                        if (success) navigate("/companydashboard");
+                                    }}
+                                    className="px-2 sm:px-3 md:px-4 py-1 sm:py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 text-xs sm:text-sm md:text-base w-full sm:w-auto"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isExamSubmitting}
+                                    className={`px-2 sm:px-3 md:px-4 py-1 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm md:text-base ${isExamSubmitting ? "opacity-50 cursor-not-allowed" : ""} w-full sm:w-auto`}
+                                >
+                                    {isExamSubmitting ? "Creating Exam..." : "Add Exam"}
                                 </button>
                             </div>
                         </form>

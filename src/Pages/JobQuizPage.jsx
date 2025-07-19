@@ -49,9 +49,9 @@ export default function JobQuizPage() {
     fetchJobDetails();
   }, [id, authToken, userId]);
 
-  // Fetch quizzes for this job
+  // Fetch exam for this job
   useEffect(() => {
-    const fetchQuizzes = async () => {
+    const fetchExam = async () => {
       if (!authToken || !userId) {
         setLoading(false);
         return;
@@ -59,8 +59,7 @@ export default function JobQuizPage() {
 
       setLoading(true);
       try {
-        // Replace this with your actual API endpoint for fetching quizzes
-        const response = await fetch(`http://fit4job.runasp.net/api/Jobs/${id}/quizzes`, {
+        const response = await fetch(`http://fit4job.runasp.net/api/CompanyExam/${id}`, {
           headers: {
             accept: 'text/plain',
             Authorization: `Bearer ${authToken}`,
@@ -70,25 +69,24 @@ export default function JobQuizPage() {
         if (response.ok) {
           const data = await response.json();
           if (data?.success && data.data) {
-            setQuizzes(Array.isArray(data.data) ? data.data : []);
+            setQuizzes([data.data]); // Put the single exam in an array for compatibility
           } else {
             setQuizzes([]);
           }
         } else if (response.status === 404) {
-          // No quizzes found for this job
           setQuizzes([]);
         } else {
-          throw new Error('Failed to fetch quizzes.');
+          throw new Error('Failed to fetch exam.');
         }
       } catch (err) {
-        console.error('Error fetching quizzes:', err);
+        console.error('Error fetching exam:', err);
         setQuizzes([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchQuizzes();
+    fetchExam();
   }, [id, authToken, userId]);
 
   const handleStart = (quiz) => {
