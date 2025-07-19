@@ -3,8 +3,6 @@ import {
   LayoutDashboard,
   Building,
   Briefcase,
-  FileText,
-  CheckSquare,
   Users,
   LogOut,
   Menu,
@@ -20,8 +18,6 @@ export function SidebarLayout({ children }) {
     { icon: LayoutDashboard, label: "Dashboard", to: "/companydashboard" },
     { icon: Building, label: "Company Profile", to: "/company-profile" },
     { icon: Briefcase, label: "Add Job", to: "/job-quiz/0" },
-    { icon: FileText, label: "Add Exam", to: "/" },
-    { icon: CheckSquare, label: "Add Task", to: "/task" },
     { icon: Users, label: "View Responses", to: "/ResponsesView" }
   ];
 

@@ -16,6 +16,8 @@ import VerifyCode from './Components/VerifyCode'
 import CompanyDashboard from "./Components/CompanyDashboardMain/Dashboard/CompanyDashboard";
 import JobPostForm from "./Components/CompanyDashboardMain/JobPostForm";
 import CompanyProfile from "./Components/CompanyDashboardMain/CompanyProfile";
+import { ResponsesView } from "./Components/CompanyDashboardMain/ResponsesView";
+import { SidebarLayout } from "./layouts/SidebarLayout";
 import "./App.css";
 import "./App.css";
 import Login from "./Components/login";
@@ -38,7 +40,8 @@ function App() {
           <Route path="/companydashboard" element={<CompanyDashboard />} />
           <Route path="/company-profile" element={<CompanyProfile />} />
           <Route path="/job-quiz/:id" element={<JobPostForm />} />
-          <Route path="/quiz" element={<JobQuizPage />} />
+          <Route path="/ResponsesView" element={<SidebarLayout><ResponsesView /></SidebarLayout>} />
+          <Route path="/quiz/:id" element={<JobQuizPage />} />
           <Route path="/verify" element={<VerifyCode />} />
           <Route path="/trackManager" element={<TrackManager/>} />
 

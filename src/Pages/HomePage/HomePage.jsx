@@ -14,18 +14,32 @@ import axios from 'axios';
 import { FaSearch } from 'react-icons/fa';
 
 export default function HomePage() {
+  // Refs for scrollable containers
   const scrollRef = useRef(null);
+  const jobsScrollRef = useRef(null);
+  
+  // States for course carousel
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  
+  // States for jobs carousel
+  const [isJobsAtStart, setIsJobsAtStart] = useState(true);
+  const [isJobsAtEnd, setIsJobsAtEnd] = useState(false);
+  const [showAllJobs, setShowAllJobs] = useState(false); // Controls jobs display mode
+  
+  // Data states
   const [courses, setCourses] = useState([]);
   const [allCourses, setAllCourses] = useState([]); // Cache all courses
   const [jobs, setJobs] = useState([]); // State for jobs
+  
+  // Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const baseUrl = '/api/TrackCategories';
 
+  // Handle course carousel scroll
   const handleScroll = (direction) => {
     const container = scrollRef.current;
     const scrollAmount = container.offsetWidth;
@@ -35,10 +49,30 @@ export default function HomePage() {
     });
   };
 
+  // Handle jobs carousel scroll
+  const handleJobsScroll = (direction) => {
+    const container = jobsScrollRef.current;
+    const scrollAmount = container.offsetWidth;
+    container.scrollBy({
+      left: direction === 'right' ? scrollAmount : -scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
+  // Check course carousel scroll position to enable/disable navigation buttons
   const checkScrollPosition = () => {
     const container = scrollRef.current;
     setIsAtStart(container.scrollLeft <= 0);
     setIsAtEnd(container.scrollLeft + container.offsetWidth >= container.scrollWidth - 10);
+  };
+
+  // Check jobs carousel scroll position to enable/disable navigation buttons
+  const checkJobsScrollPosition = () => {
+    const container = jobsScrollRef.current;
+    if (container) {
+      setIsJobsAtStart(container.scrollLeft <= 0);
+      setIsJobsAtEnd(container.scrollLeft + container.offsetWidth >= container.scrollWidth - 10);
+    }
   };
 
   useEffect(() => {
@@ -47,6 +81,15 @@ export default function HomePage() {
     checkScrollPosition();
     return () => container.removeEventListener('scroll', checkScrollPosition);
   }, []);
+
+  useEffect(() => {
+    const container = jobsScrollRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkJobsScrollPosition);
+      checkJobsScrollPosition();
+      return () => container.removeEventListener('scroll', checkJobsScrollPosition);
+    }
+  }, [showAllJobs]);
 
   // Fetch all courses
   useEffect(() => {
@@ -292,18 +335,56 @@ export default function HomePage() {
           {/* Job Cards Header */}
           <div className="flex justify-between items-center mt-16 mb-4 px-2 sm:px-0">
             <h3 className="text-2xl font-semibold">New Jobs</h3>
-            <div className="icons flex items-center gap-2 cursor-pointer text-blue-600 font-semibold">
-              View All
-              <img src={blackArrow} alt="" className="w-5 h-5" />
+            <div className="flex items-center gap-4">
+              {showAllJobs && (
+                <div className="icons flex items-center gap-2">
+                  <button
+                    onClick={() => handleJobsScroll('left')}
+                    disabled={isJobsAtStart}
+                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 ${
+                      isJobsAtStart ? 'opacity-30 cursor-not-allowed' : 'hover:shadow-md'
+                    }`}
+                  >
+                    <img src={rightArrow} alt="Left" className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleJobsScroll('right')}
+                    disabled={isJobsAtEnd}
+                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 ${
+                      isJobsAtEnd ? 'opacity-30 cursor-not-allowed' : 'hover:shadow-md'
+                    }`}
+                  >
+                    <img src={leftArrow} alt="Right" className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+              <div 
+                className="icons flex items-center gap-2 cursor-pointer text-blue-600 font-semibold hover:text-blue-800 transition-colors duration-200 p-2 rounded-lg hover:bg-blue-50"
+                onClick={() => setShowAllJobs(!showAllJobs)}
+              >
+                {showAllJobs ? 'Show Less' : 'View All'}
+                <img src={blackArrow} alt="" className={`w-5 h-5 transition-transform duration-300 ${showAllJobs ? 'rotate-180' : ''}`} />
+              </div>
             </div>
           </div>
 
           {/* Job Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-2 text-center items-center">
+          <div 
+            ref={jobsScrollRef} 
+            className={`transition-all duration-500 ease-in-out ${
+              showAllJobs 
+                ? 'flex gap-6 overflow-x-auto scroll-smooth no-scrollbar pb-2' 
+                : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-2 text-center items-center'
+            }`}
+          >
             {isLoading ? (
               <p className="text-center text-gray-500">Loading jobs...</p>
             ) : jobs.length > 0 ? (
-              jobs.slice(0, 4).map((job) => <NewJops key={job.id} job={job} />)
+              (showAllJobs ? jobs : jobs.slice(0, 4)).map((job) => (
+                <div key={job.id} className="transition-all duration-300 ease-in-out">
+                  <NewJops job={job} />
+                </div>
+              ))
             ) : (
               <p className="text-center text-gray-500">No jobs available.</p>
             )}
