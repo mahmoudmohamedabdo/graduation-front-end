@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import auth from "../assets/Images/auth.jpg";
+import { ROLES } from "../constants/roles";
 
 export default function VerifyCode() {
   const navigate = useNavigate();
@@ -68,7 +69,13 @@ export default function VerifyCode() {
         localStorage.removeItem("userEmail");
         localStorage.removeItem("username");
         localStorage.removeItem("userRole");
-        navigate(userRole === "JobSeeker" ? "/home" : "/companydashboard");
+        if (userRole === ROLES.ADMIN) {
+          navigate("/admin-dashboard");
+        } else if (userRole === ROLES.JOB_SEEKER) {
+          navigate("/home");
+        } else {
+          navigate("/companydashboard");
+        }
       } else {
         let errorMessage = verifyResult.message || verifyResult.detail || "Invalid verification code";
         if (verifyResult.errorCode === 120) {
